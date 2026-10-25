@@ -49,13 +49,13 @@ import firebaseConfig from '../firebase-applet-config.json';
 // Initialize Firebase App singleton
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Database instance with experimentalAutoDetectLongPolling for iframe & Cloud Run sandbox compatibility
+// Database instance with experimentalForceLongPolling for iframe & Cloud Run sandbox compatibility
 let firestoreDb;
 try {
   firestoreDb = initializeFirestore(
     app,
     {
-      experimentalAutoDetectLongPolling: true,
+      experimentalForceLongPolling: true,
     },
     firebaseConfig.firestoreDatabaseId
   );
@@ -140,8 +140,12 @@ export async function testFirestoreConnection(): Promise<boolean> {
   }
 }
 
-// Initial boot probe
-testFirestoreConnection().catch(() => {});
+// Initial boot probe (deferred until network idle)
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    testFirestoreConnection().catch(() => {});
+  }, 1000);
+}
 
 export function isUserAdmin(user: User | null): boolean {
   if (!user || !user.email) return false;

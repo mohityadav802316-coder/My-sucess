@@ -1,0 +1,46 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email in ['yadavshiv16478@gmail.com', 'mohityadav802316@gmail.com']
+      );
+    }
+
+    // Locked Family Folder (Zero-Trust Security: Locked by default)
+    // Direct unauthorized reading is mathematically blocked
+    match /family/{allPaths=**} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.token.family_vault == true);
+      allow write: if isAdmin() &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+      allow delete: if isAdmin();
+    }
+
+    // Public portfolio images and background music
+    match /portfolio/{allPaths=**} {
+      // Public visitors can stream audio and view portfolio pictures
+      allow read: if true;
+      // Only authenticated admin can upload or delete assets, up to 15MB
+      allow write: if isAdmin() &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('(image|audio)/.*');
+      allow delete: if isAdmin();
+    }
+
+    // Friends Universe images (Avatar, Hero 3D, and Gallery photos)
+    match /friends/{allPaths=**} {
+      // Public visitors can view friend photos in the portfolio
+      allow read: if true;
+      // Only authenticated admin can upload or delete friend photos, up to 15MB
+      allow write: if isAdmin() &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+      allow delete: if isAdmin();
+    }
+  }
+}

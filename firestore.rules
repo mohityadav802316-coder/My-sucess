@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny all unknown paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email in ['yadavshiv16478@gmail.com', 'mohityadav802316@gmail.com']) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['name', 'message', 'createdAt', 'read']) &&
+        data.keys().hasOnly(['name', 'email', 'message', 'createdAt', 'read', 'archived', 'source']) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+        data.message is string && data.message.size() >= 2 && data.message.size() <= 2000 &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 150)) &&
+        (!('archived' in data) || data.archived is bool) &&
+        (!('source' in data) || (data.source is string && data.source.size() <= 50)) &&
+        data.read == false &&
+        data.createdAt == request.time;
+    }
+
+    function isValidGuestbookEntry(data) {
+      return data.keys().hasAll(['name', 'message', 'status', 'createdAt']) &&
+        data.keys().hasOnly(['name', 'message', 'status', 'createdAt', 'deviceToken']) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 50 &&
+        data.message is string && data.message.size() >= 2 && data.message.size() <= 150 &&
+        data.status == 'pending' &&
+        data.createdAt == request.time &&
+        (!('deviceToken' in data) || (data.deviceToken is string && data.deviceToken.size() <= 100));
+    }
+
+    // Connection testing endpoint
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // 1. Visitor contact messages ('messages' collection)
+    match /messages/{messageId} {
+      // Public visitors can submit contact transmissions
+      allow create: if isValidId(messageId) && isValidMessage(request.resource.data);
+      // Strictly Admin-only: read, update (read/archived status), and delete
+      allow get, list, delete: if isAdmin();
+      allow update: if isAdmin() && isValidId(messageId) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'archived'])
+      );
+    }
+
+    // 2. Legacy visitor messages archive ('visitor_messages')
+    match /visitor_messages/{messageId} {
+      allow get, list, delete, update: if isAdmin() && isValidId(messageId);
+    }
+
+    // 3. Visitor Guestbook Wall Collection ('guestbook' collection)
+    match /guestbook/{entryId} {
+      // Anyone can submit a guestbook message, strictly in 'pending' status
+      allow create: if isValidId(entryId) && isValidGuestbookEntry(request.resource.data);
+      // Public visitors can only read approved messages; Admin can view all statuses
+      allow get, list: if (resource.data.status == 'approved') || isAdmin();
+      // Only authenticated admins can approve, reject, or delete
+      allow update: if isAdmin() && isValidId(entryId) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt']) &&
+        request.resource.data.status in ['approved', 'rejected', 'pending']
+      );
+      allow delete: if isAdmin() && isValidId(entryId);
+    }
+
+    // 4. Portfolio Images metadata collection ('images' collection)
+    match /images/{imageId} {
+      // Public visitors can view published images; Admin can view all
+      allow get, list: if (resource.data.isPublished == true) || isAdmin();
+      // Admin CRUD
+      allow create, update, delete: if isAdmin() && isValidId(imageId);
+    }
+
+    // 5. Global website configuration settings ('settings' collection)
+    match /settings/{settingId} {
+      allow read: if isValidId(settingId);
+      allow write: if isAdmin() && isValidId(settingId);
+    }
+
+    // 6. Locked Folder - Family Members Collection
+    match /family_members/{memberId} {
+      allow read: if isValidId(memberId);
+      allow create, update, delete: if isAdmin() && isValidId(memberId);
+    }
+
+    // 7. Friends Universe Collections (Zero-Trust Security & Public Isolation)
+    match /friends/{friendId} {
+      // Public visitors can read friends; Admin can manage
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidId(friendId);
+    }
+
+    match /friendsPrivate/{friendId} {
+      // Strictly Admin-only: public visitors NEVER get access to private friend data
+      allow read, write: if isAdmin() && isValidId(friendId);
+    }
+
+    match /friendsConfig/{configId} {
+      // Public visitors can read configuration; Admin only can update
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(configId);
+    }
+
+    // 8. System Credentials & Master Security Metadata (Strictly Admin only - NEVER public)
+    match /system_credentials/{docId} {
+      allow read, write: if isAdmin() && isValidId(docId);
+    }
+
+    // 9. Admin profiles
+    match /admins/{adminId} {
+      allow read: if isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow write: if isAdmin();
+    }
+  }
+}

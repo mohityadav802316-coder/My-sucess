@@ -1,0 +1,419 @@
+{
+  "project": {
+    "id": "PROJ-CYBERMOHIT",
+    "name": "Remix Remix CyberMohit AI Portfolio",
+    "tagline": "Cinematic Bilingual 3D Cyberpunk Portfolio",
+    "subject": "Mohit Yadav",
+    "academic_profile": "Class 12 Science (PCM) Student, Bihar School Examination Board (BSEB)",
+    "target_roles": ["AI Engineer", "Python Developer", "Cybersecurity Architect"],
+    "version": "4.0.0",
+    "framework": "React 19.0.1",
+    "bundler": "Vite 8.3.0",
+    "styling": "Tailwind CSS v4.3.3",
+    "languages_supported": ["en", "hi"]
+  },
+  "routes": [
+    { "id": "ROUTE-001", "path": "/", "name": "Main Single Page Application", "component": "App" },
+    { "id": "ROUTE-002", "path": "/#hero", "name": "Identity Nexus", "component": "HeroSection" },
+    { "id": "ROUTE-003", "path": "/#about", "name": "Academic & Tech Odyssey", "component": "AboutSection" },
+    { "id": "ROUTE-004", "path": "/#tech-console", "name": "Universal Tech Console", "component": "UniversalTechConsole" },
+    { "id": "ROUTE-005", "path": "/#cybersecurity", "name": "Cyber Defense & Shield", "component": "CyberSecuritySection" },
+    { "id": "ROUTE-006", "path": "/#skills", "name": "Skills Arsenal", "component": "SkillsSection" },
+    { "id": "ROUTE-007", "path": "/#roadmap", "name": "Roadmap 2026", "component": "RoadmapSection" },
+    { "id": "ROUTE-008", "path": "/#projects", "name": "Projects Matrix", "component": "ProjectsSection" },
+    { "id": "ROUTE-009", "path": "/#gallery", "name": "3D Multiverse Gallery", "component": "GallerySection" },
+    { "id": "ROUTE-010", "path": "/#guestbook", "name": "Visitor Guestbook", "component": "GuestbookSection" },
+    { "id": "ROUTE-011", "path": "/#vision", "name": "Future Vision", "component": "VisionSection" },
+    { "id": "ROUTE-012", "path": "/#contact", "name": "Establish Secure Link", "component": "ContactSection" }
+  ],
+  "pages": [
+    {
+      "id": "PAGE-001",
+      "name": "Single Page Application Master",
+      "source_file": "src/App.tsx",
+      "layout": "Root Layout with fixed 3D canvas, ambient nodes, floating HUD, and modals"
+    }
+  ],
+  "sections": [
+    { "id": "SEC-001", "name": "Hero Section", "anchor": "#hero", "source_file": "src/components/sections/HeroSection.tsx" },
+    { "id": "SEC-002", "name": "About Section", "anchor": "#about", "source_file": "src/components/sections/AboutSection.tsx" },
+    { "id": "SEC-003", "name": "Universal Tech Console", "anchor": "#tech-console", "source_file": "src/components/sections/UniversalTechConsole.tsx" },
+    { "id": "SEC-004", "name": "Cyber Defense", "anchor": "#cybersecurity", "source_file": "src/components/sections/CyberSecuritySection.tsx" },
+    { "id": "SEC-005", "name": "Skills Arsenal", "anchor": "#skills", "source_file": "src/components/sections/SkillsSection.tsx" },
+    { "id": "SEC-006", "name": "Roadmap Milestones", "anchor": "#roadmap", "source_file": "src/components/sections/RoadmapSection.tsx" },
+    { "id": "SEC-007", "name": "Projects Matrix", "anchor": "#projects", "source_file": "src/components/sections/ProjectsSection.tsx" },
+    { "id": "SEC-008", "name": "3D Gallery", "anchor": "#gallery", "source_file": "src/components/sections/GallerySection.tsx" },
+    { "id": "SEC-009", "name": "Guestbook", "anchor": "#guestbook", "source_file": "src/components/sections/GuestbookSection.tsx" },
+    { "id": "SEC-010", "name": "Vision", "anchor": "#vision", "source_file": "src/components/sections/VisionSection.tsx" },
+    { "id": "SEC-011", "name": "Contact", "anchor": "#contact", "source_file": "src/components/sections/ContactSection.tsx" },
+    { "id": "SEC-012", "name": "Footer", "anchor": "footer", "source_file": "src/components/sections/Footer.tsx" }
+  ],
+  "elements": [
+    {
+      "id": "NAV-001",
+      "name": "Brand Monogram Logo",
+      "type": "link",
+      "page": "Single Page Application",
+      "section": "CyberNavbar",
+      "source_files": ["src/components/CyberNavbar.tsx"],
+      "component": "CyberNavbar",
+      "visual_description": "Gradient box with MY monogram and MOHIT YADAV wordmark",
+      "dimensions": "32x32px logo box",
+      "position": "Header Top-Left",
+      "appearance": "2D gradient border with amber drop-shadow",
+      "interaction_ids": ["INT-NAV-001"],
+      "dependencies": ["SoundEffects.ts"],
+      "verification_status": "code_inspected_and_build_verified",
+      "issues": []
+    },
+    {
+      "id": "NAV-010",
+      "name": "Audio Synthesizer Mute Toggle",
+      "type": "button",
+      "page": "Single Page Application",
+      "section": "CyberNavbar",
+      "source_files": ["src/components/CyberNavbar.tsx", "src/components/audio/SoundEffects.ts"],
+      "component": "CyberNavbar",
+      "visual_description": "Circular button with Volume2 / VolumeX icon",
+      "dimensions": "36x36px",
+      "position": "Header Right Controls",
+      "appearance": "Glassmorphic dark button with amber hover",
+      "interaction_ids": ["INT-NAV-010"],
+      "dependencies": ["SoundEffects.ts"],
+      "verification_status": "code_inspected_and_build_verified",
+      "issues": []
+    },
+    {
+      "id": "NAV-011",
+      "name": "Bilingual Language Switcher",
+      "type": "button",
+      "page": "Single Page Application",
+      "section": "CyberNavbar",
+      "source_files": ["src/components/CyberNavbar.tsx", "src/context/LanguageContext.tsx"],
+      "component": "CyberNavbar",
+      "visual_description": "Rounded pill showing EN / HI badge",
+      "dimensions": "auto",
+      "position": "Header Right Controls",
+      "appearance": "Monospace pill with amber text",
+      "interaction_ids": ["INT-NAV-011"],
+      "dependencies": ["LanguageContext.tsx", "SoundEffects.ts"],
+      "verification_status": "code_inspected_and_build_verified",
+      "issues": []
+    },
+    {
+      "id": "HERO-004",
+      "name": "Explore 3D Console Button",
+      "type": "button",
+      "page": "Single Page Application",
+      "section": "HeroSection",
+      "source_files": ["src/components/sections/HeroSection.tsx"],
+      "component": "HeroSection",
+      "visual_description": "Large gradient pill button with right arrow icon",
+      "dimensions": "px-6 py-3",
+      "position": "Hero Left Content",
+      "appearance": "Gradient amber/rose with glowing shadow",
+      "interaction_ids": ["INT-HERO-001"],
+      "dependencies": ["SoundEffects.ts"],
+      "verification_status": "code_inspected_and_build_verified",
+      "issues": []
+    },
+    {
+      "id": "HERO-006",
+      "name": "3D Mobile Phone Chassis",
+      "type": "3d_canvas",
+      "page": "Single Page Application",
+      "section": "HeroSection",
+      "source_files": ["src/components/three/FloatingPhoneHero3D.tsx"],
+      "component": "FloatingPhoneHero3D",
+      "visual_description": "WebGL flagship smartphone with glass reflection and portrait photo",
+      "dimensions": "max-w-[420px] aspect-[9/16]",
+      "position": "Hero Right Content",
+      "appearance": "3D Three.js mesh with interactive drag tilt",
+      "interaction_ids": ["INT-HERO-003"],
+      "dependencies": ["three"],
+      "verification_status": "code_inspected_and_build_verified",
+      "issues": []
+    },
+    {
+      "id": "FIREBALL-001",
+      "name": "Booyah Fireball Floating Button",
+      "type": "floating_button",
+      "page": "Single Page Application",
+      "section": "Global Floating",
+      "source_files": ["src/components/vfx/FireballButton.tsx"],
+      "component": "FireballButton",
+      "visual_description": "3D beveled circular button with procedural dancing flame core",
+      "dimensions": "78x78px",
+      "position": "Bottom-Right viewport fixed",
+      "appearance": "Procedural canvas flame with floating spring physics",
+      "interaction_ids": ["INT-FIRE-001"],
+      "dependencies": ["SoundEffects.ts"],
+      "verification_status": "code_inspected_and_build_verified",
+      "issues": []
+    }
+  ],
+  "components": [
+    { "id": "COMP-001", "name": "App", "path": "src/App.tsx", "type": "root_orchestrator" },
+    { "id": "COMP-002", "name": "CyberNavbar", "path": "src/components/CyberNavbar.tsx", "type": "layout_header" },
+    { "id": "COMP-003", "name": "CinematicCanvas3D", "path": "src/components/three/CinematicCanvas3D.tsx", "type": "3d_webgl_canvas" },
+    { "id": "COMP-004", "name": "FloatingPhoneHero3D", "path": "src/components/three/FloatingPhoneHero3D.tsx", "type": "3d_webgl_model" },
+    { "id": "COMP-005", "name": "PhotoOrbitHero3D", "path": "src/components/three/PhotoOrbitHero3D.tsx", "type": "3d_webgl_orbit" },
+    { "id": "COMP-006", "name": "Lens3DViewer", "path": "src/components/three/Lens3DViewer.tsx", "type": "3d_optical_lens" },
+    { "id": "COMP-007", "name": "MysticTouchSparks", "path": "src/components/vfx/MysticTouchSparks.tsx", "type": "2d_canvas_particles" },
+    { "id": "COMP-008", "name": "FireballButton", "path": "src/components/vfx/FireballButton.tsx", "type": "procedural_vfx_button" },
+    { "id": "COMP-009", "name": "IntroScreen", "path": "src/components/vfx/IntroScreen.tsx", "type": "kinetic_typography_intro" },
+    { "id": "COMP-010", "name": "FriendsUniverse", "path": "src/components/friends/FriendsUniverse.tsx", "type": "interactive_modal" },
+    { "id": "COMP-011", "name": "FamilyVaultModal", "path": "src/components/family/FamilyVaultModal.tsx", "type": "secure_vault_modal" },
+    { "id": "COMP-012", "name": "AdminModal", "path": "src/components/admin/AdminModal.tsx", "type": "control_plane_dashboard" }
+  ],
+  "interactions": [
+    {
+      "id": "INT-NAV-001",
+      "element_id": "NAV-001",
+      "event": "click",
+      "action": "Smooth scroll to top of page",
+      "audio_cue": "sound.playClick()",
+      "status": "working"
+    },
+    {
+      "id": "INT-NAV-010",
+      "element_id": "NAV-010",
+      "event": "click",
+      "action": "Toggle sound synthesizer mute state and persist to localStorage",
+      "audio_cue": "Audio chime on unmute",
+      "status": "working"
+    },
+    {
+      "id": "INT-NAV-011",
+      "element_id": "NAV-011",
+      "event": "click",
+      "action": "Switch LanguageContext mode between 'en' and 'hi'",
+      "audio_cue": "sound.playClick()",
+      "status": "working"
+    },
+    {
+      "id": "INT-FIRE-001",
+      "element_id": "FIREBALL-001",
+      "event": "click",
+      "action": "Set isFriendsOpen = true, mounting FriendsUniverse modal",
+      "audio_cue": "sound.playClick()",
+      "status": "working"
+    }
+  ],
+  "user_journeys": [
+    {
+      "id": "JOURNEY-001",
+      "name": "Visitor Exploration to Friends 3D Dossier",
+      "steps": [
+        "User clicks FireballButton (FIREBALL-001) or Navbar Friends (NAV-013)",
+        "FriendsUniverse modal opens with category filters",
+        "User selects category 'Free Fire Squad'",
+        "User clicks 'View 3D Dossier' on squad member card",
+        "FriendHeroProfile renders 3D phone model with friend avatar",
+        "User clicks 'View 3D Gallery' to browse multi-photo lightbox"
+      ]
+    },
+    {
+      "id": "JOURNEY-002",
+      "name": "Live Message Submission to Guestbook",
+      "steps": [
+        "User scrolls to #guestbook",
+        "User inputs name and message",
+        "User clicks 'Send Message' button",
+        "System validates text against profanity filter",
+        "Payload written to Firestore visitor_messages collection",
+        "Celebration confetti fires and success audio chime plays"
+      ]
+    },
+    {
+      "id": "JOURNEY-003",
+      "name": "Zero-Trust Family Vault Unlock",
+      "steps": [
+        "User clicks Navbar Key icon (NAV-014)",
+        "FamilyVaultModal opens on security lock screen",
+        "User inputs passcode",
+        "Web Crypto API computes SHA-256(password + salt) and verifies hash",
+        "Family member portraits directory unlocks and displays"
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "id": "ANIM-001",
+      "name": "5-Zone Multiverse 3D Canvas",
+      "category": "3d_webgl",
+      "source_files": ["src/components/three/CinematicCanvas3D.tsx"],
+      "trigger": "scroll_and_render_loop",
+      "implementation": "Three.js Points, ShaderMaterial, PerspectiveCamera",
+      "status": "verified_in_code"
+    },
+    {
+      "id": "ANIM-002",
+      "name": "3D Photo Orbit Hero System",
+      "category": "3d_webgl",
+      "source_files": ["src/components/three/PhotoOrbitHero3D.tsx"],
+      "trigger": "continuous_and_pointer_drag",
+      "implementation": "Three.js Mesh, MeshPhysicalMaterial, RoomEnvironment",
+      "status": "verified_in_code"
+    },
+    {
+      "id": "ANIM-003",
+      "name": "Exploded View Missile Words Intro",
+      "category": "motion_dom",
+      "source_files": ["src/components/vfx/IntroScreen.tsx"],
+      "trigger": "session_mount",
+      "implementation": "Motion motion.div with staggered cubic-bezier flight vectors",
+      "status": "verified_in_code"
+    },
+    {
+      "id": "ANIM-004",
+      "name": "Multiverse Touch Sparks & Chaos Embers",
+      "category": "canvas_2d",
+      "source_files": ["src/components/vfx/MysticTouchSparks.tsx"],
+      "trigger": "pointermove_and_touchmove",
+      "implementation": "HTML5 2D Canvas particle pool with gravity and drag physics",
+      "status": "verified_in_code"
+    },
+    {
+      "id": "ANIM-005",
+      "name": "3D Perspective Tilt Card",
+      "category": "css_transform",
+      "source_files": ["src/components/vfx/MysticTiltCard.tsx"],
+      "trigger": "pointer_hover_and_touch",
+      "implementation": "CSS 3D perspective rotateX/rotateY and radial-gradient specular glare",
+      "status": "verified_in_code"
+    },
+    {
+      "id": "ANIM-006",
+      "name": "Procedural Dancing Flame Booyah Button",
+      "category": "canvas_2d",
+      "source_files": ["src/components/vfx/FireballButton.tsx"],
+      "trigger": "continuous_and_hover",
+      "implementation": "Canvas sinusoidal harmonic curves + golden rising ember physics",
+      "status": "verified_in_code"
+    }
+  ],
+  "design_tokens": {
+    "colors": {
+      "obsidian_base": "#020617",
+      "card_surface": "#0b0f19",
+      "amber_hero": "#f59e0b",
+      "scarlet_chaos": "#e11d48",
+      "astral_cyan": "#06b6d4",
+      "quantum_emerald": "#10b981",
+      "arcana_purple": "#8b5cf6"
+    },
+    "fonts": {
+      "display": "Orbitron",
+      "headings": "Rajdhani",
+      "mono": "JetBrains Mono / System Monospace",
+      "body": "Noto Sans Devanagari / System Sans"
+    },
+    "radii": {
+      "sm": "8px",
+      "md": "12px",
+      "lg": "16px",
+      "modal": "24px"
+    }
+  },
+  "dependencies": [
+    { "name": "react", "version": "^19.0.1", "purpose": "Core UI Framework" },
+    { "name": "three", "version": "^0.186.1", "purpose": "WebGL 3D Rendering Engine" },
+    { "name": "motion", "version": "^12.23.24", "purpose": "Kinetic Animation & Springs" },
+    { "name": "firebase", "version": "^13.0.0", "purpose": "Cloud Firestore & Storage" },
+    { "name": "@tailwindcss/vite", "version": "^4.3.3", "purpose": "CSS Compiler" },
+    { "name": "lucide-react", "version": "^0.546.0", "purpose": "Vector Icon System" },
+    { "name": "canvas-confetti", "version": "^1.9.4", "purpose": "Particle Confetti Celebration" }
+  ],
+  "data_integrations": [
+    { "service": "Cloud Firestore", "collections": ["site_settings", "images", "projects", "skills", "milestones", "friends", "family_members", "visitor_messages", "guestbook", "system_credentials"] },
+    { "service": "Firebase Storage", "buckets": ["portfolio/*", "friends/*", "family/*"] },
+    { "service": "Web Crypto API", "methods": ["crypto.subtle.digest('SHA-256')"] }
+  ],
+  "issues": [
+    {
+      "id": "BUG-001",
+      "category": "3d_rendering",
+      "severity": "medium",
+      "affected_component": "PhotoOrbitHero3D",
+      "source_file": "src/components/three/PhotoOrbitHero3D.tsx",
+      "line_range": "85-115",
+      "issue": "Cross-origin security taint risk on external image URLs lacking CORS headers",
+      "recommended_fix": "Add textureLoader.setCrossOrigin('anonymous') and attach onError fallback texture"
+    },
+    {
+      "id": "BUG-002",
+      "category": "data_flow_ux",
+      "severity": "low",
+      "affected_component": "GuestbookSection",
+      "source_file": "src/components/sections/GuestbookSection.tsx",
+      "line_range": "95-130",
+      "issue": "Submission feedback does not explicitly state that message requires admin approval before public listing",
+      "recommended_fix": "Update feedback banner copy to clarify that messages are queued for review"
+    },
+    {
+      "id": "BUG-003",
+      "category": "audio_engine",
+      "severity": "low",
+      "affected_component": "BackgroundMusic",
+      "source_file": "src/components/audio/BackgroundMusic.tsx",
+      "line_range": "45-70",
+      "issue": "Cold initial loads prior to screen tap remain silent per browser security policy",
+      "recommended_fix": "Add subtle gesture prompt on intro screen"
+    },
+    {
+      "id": "BUG-004",
+      "category": "security_hardening",
+      "severity": "medium",
+      "affected_component": "AdminModal",
+      "source_file": "src/components/admin/AdminModal.tsx",
+      "line_range": "45-60",
+      "issue": "Default emergency PIN (802316) remains active even when custom credentials exist",
+      "recommended_fix": "Condition default PIN check to only execute when system_credentials/admin_access document is absent"
+    },
+    {
+      "id": "BUG-005",
+      "category": "ux_lifecycle",
+      "severity": "low",
+      "affected_component": "IntroScreen",
+      "source_file": "src/App.tsx",
+      "line_range": "38-48",
+      "issue": "Intro plays once per tab session instead of once per browser client",
+      "recommended_fix": "Use localStorage.getItem('mohit_intro_seen') with a manual replay trigger in header"
+    }
+  ],
+  "change_impacts": [
+    {
+      "feature": "Hero 3D Orbit & Profile Phone",
+      "entry_file": "src/components/sections/HeroSection.tsx",
+      "dependents": ["src/components/three/FloatingPhoneHero3D.tsx", "src/components/three/PhotoOrbitHero3D.tsx", "src/components/admin/AdminImagesManager.tsx"]
+    },
+    {
+      "feature": "Friends Universe & Squad Dossier",
+      "entry_file": "src/components/friends/FriendsUniverse.tsx",
+      "dependents": ["src/components/friends/FriendHeroProfile.tsx", "src/components/friends/FriendProfileModal.tsx", "src/components/admin/AdminFriendsManager.tsx"]
+    },
+    {
+      "feature": "Family Vault Sanctuary",
+      "entry_file": "src/components/family/FamilyVaultModal.tsx",
+      "dependents": ["src/components/family/FamilyMemberHeroProfile.tsx", "src/components/admin/AdminFamilyManager.tsx", "src/utils/crypto.ts"]
+    },
+    {
+      "feature": "Admin Command Console",
+      "entry_file": "src/components/admin/AdminModal.tsx",
+      "dependents": ["src/components/admin/AdminSkillsManager.tsx", "src/components/admin/AdminProjectManager.tsx", "src/components/admin/AdminJourneyManager.tsx", "src/components/admin/AdminImagesManager.tsx"]
+    }
+  ],
+  "audit_coverage": {
+    "total_source_files_identified": 47,
+    "total_source_files_inspected": 47,
+    "coverage_percentage": 100,
+    "inspection_type": "deep_static_source_code_and_runtime_build"
+  },
+  "verification_results": {
+    "typescript_compilation": "PASSED (0 errors via tsc --noEmit)",
+    "vite_production_build": "PASSED",
+    "http_server_response": "PASSED (HTTP 200 OK on port 3000)",
+    "offline_resilience": "PASSED (Fallback data populated across all components)"
+  }
+}

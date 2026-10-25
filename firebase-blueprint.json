@@ -1,0 +1,156 @@
+{
+  "entities": {
+    "Message": {
+      "title": "Message",
+      "description": "Visitor contact transmission submitted through the portfolio contact form",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 100, "description": "Sender display name" },
+        "email": { "type": "string", "maxLength": 150, "description": "Optional contact email" },
+        "message": { "type": "string", "minLength": 2, "maxLength": 2000, "description": "Message content" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of transmission" },
+        "read": { "type": "boolean", "description": "Read status for admin" },
+        "archived": { "type": "boolean", "description": "Archived status for admin" },
+        "source": { "type": "string", "maxLength": 50, "description": "Origin of transmission" }
+      },
+      "required": ["name", "message", "createdAt", "read"]
+    },
+    "GuestbookEntry": {
+      "title": "GuestbookEntry",
+      "description": "Public guestbook note left by a visitor pending admin moderation",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 50, "description": "Visitor name" },
+        "message": { "type": "string", "minLength": 2, "maxLength": 150, "description": "Short note text" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "Moderation status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Submission timestamp" },
+        "reviewedAt": { "type": "string", "format": "date-time", "description": "Admin review timestamp" },
+        "deviceToken": { "type": "string", "maxLength": 100, "description": "Device token for rate limiting" }
+      },
+      "required": ["name", "message", "status", "createdAt"]
+    },
+    "PortfolioImage": {
+      "title": "PortfolioImage",
+      "description": "Image metadata item in portfolio media showcase and 3D orbit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique image ID" },
+        "title": { "type": "string", "description": "Image title" },
+        "caption": { "type": "string", "description": "English caption" },
+        "captionHi": { "type": "string", "description": "Hindi caption" },
+        "downloadUrl": { "type": "string", "description": "Public download URL" },
+        "storagePath": { "type": "string", "description": "Cloud Storage bucket path" },
+        "section": { "type": "string", "enum": ["profile", "about", "gallery", "roadmap", "hero"], "description": "Display section" },
+        "category": { "type": "string", "enum": ["personal", "setup", "ai_creation", "coding", "blueprint"], "description": "Photo category" },
+        "displayOrder": { "type": "number", "description": "Sort order index" },
+        "isPublished": { "type": "boolean", "description": "Public visibility" },
+        "isMainProfile": { "type": "boolean", "description": "Main avatar profile image" },
+        "isHeroOrbit": { "type": "boolean", "description": "Included in 3D orbit carousel" },
+        "orbitIndex": { "type": "number", "description": "Orbit order index" }
+      },
+      "required": ["caption", "downloadUrl", "section", "isPublished"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global website configuration, bio, themes, and dynamic copy",
+      "type": "object",
+      "properties": {
+        "profile": { "type": "object", "description": "Personal profile bio and credentials" },
+        "hero": { "type": "object", "description": "Hero section and 3D orbit settings" },
+        "theme": { "type": "object", "description": "Neon palette and atmosphere settings" },
+        "scenes": { "type": "object", "description": "Scene active toggles and order" },
+        "contact": { "type": "object", "description": "Contact handles and availability" },
+        "projects": { "type": "array", "description": "Projects portfolio items" },
+        "skills": { "type": "array", "description": "Skills matrix and proficiencies" },
+        "milestones": { "type": "array", "description": "Roadmap milestones" }
+      }
+    },
+    "FamilyMember": {
+      "title": "FamilyMember",
+      "description": "Family sanctuary member profile and memory photo albums",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name" },
+        "nameHi": { "type": "string", "description": "Hindi name" },
+        "relation": { "type": "string", "description": "Family relation" },
+        "relationHi": { "type": "string", "description": "Hindi family relation" },
+        "bio": { "type": "string", "description": "Bio memory note" },
+        "bioHi": { "type": "string", "description": "Hindi bio memory note" },
+        "photoUrl": { "type": "string", "description": "Portrait photo URL" },
+        "photos": { "type": "array", "description": "Gallery memories photo URLs" },
+        "order": { "type": "number", "description": "Sort order" }
+      },
+      "required": ["name", "relation"]
+    },
+    "Friend": {
+      "title": "Friend",
+      "description": "Friends Universe directory entry and Free Fire squad dossiers",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Friend name" },
+        "nickname": { "type": "string", "description": "Nickname or in-game alias" },
+        "username": { "type": "string", "description": "Social handle" },
+        "bio": { "type": "string", "description": "Bio description" },
+        "avatar": { "type": "string", "description": "Avatar photo URL" },
+        "heroPhotos": { "type": "array", "description": "Hero 3D circle photos" },
+        "gallery": { "type": "array", "description": "Gallery photo collection" },
+        "categories": { "type": "array", "description": "Category tags" },
+        "role": { "type": "string", "description": "Role in squad" },
+        "ffUid": { "type": "string", "description": "Free Fire UID" },
+        "dob": { "type": "string", "description": "Date of birth" },
+        "accent": { "type": "string", "description": "Neon accent color" },
+        "order": { "type": "number", "description": "Sort order" },
+        "isVisible": { "type": "boolean", "description": "Visibility flag" }
+      },
+      "required": ["name"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Administrator account metadata",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Admin email" },
+        "role": { "type": "string", "description": "Role identifier" }
+      },
+      "required": ["email"]
+    }
+  },
+  "firestore": {
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Incoming visitor contact messages"
+    },
+    "/guestbook/{entryId}": {
+      "schema": { "$ref": "#/entities/GuestbookEntry" },
+      "description": "Visitor guestbook entries awaiting or approved by admin"
+    },
+    "/images/{imageId}": {
+      "schema": { "$ref": "#/entities/PortfolioImage" },
+      "description": "Portfolio media photos and 3D orbit cards"
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SiteSettings" },
+      "description": "Global website configuration and content settings"
+    },
+    "/family_members/{memberId}": {
+      "schema": { "$ref": "#/entities/FamilyMember" },
+      "description": "Family members for locked family vault"
+    },
+    "/friends/{friendId}": {
+      "schema": { "$ref": "#/entities/Friend" },
+      "description": "Public friend profiles and squad dossiers"
+    },
+    "/friendsPrivate/{friendId}": {
+      "schema": { "$ref": "#/entities/Friend" },
+      "description": "Private friend metadata strictly accessible to admin"
+    },
+    "/friendsConfig/{configId}": {
+      "schema": { "$ref": "#/entities/SiteSettings" },
+      "description": "Configuration settings for Friends Universe"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Admin user profiles"
+    }
+  }
+}

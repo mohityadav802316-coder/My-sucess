@@ -6,7 +6,7 @@
 
 export interface FriendSocialLink {
   id?: string;
-  platform: 'instagram' | 'facebook' | 'youtube' | 'x' | 'snapchat' | 'github' | 'linkedin' | 'portfolio' | 'custom';
+  platform: 'instagram' | 'facebook' | 'youtube' | 'x' | 'snapchat' | 'github' | 'linkedin' | 'portfolio' | 'telegram' | 'discord' | 'custom' | string;
   label: string;
   url: string;
   visible?: boolean;

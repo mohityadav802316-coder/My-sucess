@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Friend, resolveImageUrl } from '../data/friends';
 import { HoloRing3D } from './HoloRing3D';
 import { useFriendsConfig } from '../data/repository';
-import { Share2, Check, ArrowLeft, MessageCircle } from 'lucide-react';
+import { Share2, Check, ArrowLeft, MessageCircle, ExternalLink } from 'lucide-react';
+import { getSocialBrandMeta } from '../utils/socialUtils';
 
 const getCleanWhatsappUrl = (raw: string | null | undefined, friendName = '') => {
   if (!raw || !raw.trim()) return null;
@@ -321,22 +322,25 @@ export const FullProfileModal: React.FC<FullProfileModalProps> = ({
                   <span className="text-xs">↗</span>
                 </a>
               )}
-              {validLinks.map((link, idx) => (
-                <a
-                  key={idx}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm border bg-[#161f33] rounded-full px-4 py-2 transition-colors min-h-[44px]"
-                  style={{
-                    borderColor: `${accentColor}80`,
-                    color: accentColor,
-                  }}
-                >
-                  <span>{link.label}</span>
-                  <span className="text-xs">↗</span>
-                </a>
-              ))}
+              {validLinks.map((link, idx) => {
+                const meta = getSocialBrandMeta(link);
+                if (!meta.url) return null;
+                return (
+                  <a
+                    key={link.id || idx}
+                    href={meta.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold font-mono border transition-all active:scale-95 min-h-[40px] ${meta.badgeClassName}`}
+                    style={meta.badgeStyle}
+                    title={`${friend.name} का ${meta.label} खोलें`}
+                  >
+                    {meta.icon}
+                    <span>{meta.label}</span>
+                    <ExternalLink className="w-3 h-3 opacity-60 ml-0.5" />
+                  </a>
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-[#8fa3bf]">कोई सोशल लिंक नहीं जुड़ा है</p>

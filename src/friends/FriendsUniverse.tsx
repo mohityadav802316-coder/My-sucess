@@ -5,6 +5,7 @@ import { useFriends, useFriend, useFriendsConfig } from './data/repository';
 import { CategoryTabs } from './components/CategoryTabs';
 import { AllFriendsList } from './components/AllFriendsList';
 import { CategoryPage } from './components/CategoryPage';
+import { FriendHeroProfile3D } from './components/FriendHeroProfile3D';
 import { FullProfileModal } from './components/FullProfileModal';
 import { LightboxModal } from './components/LightboxModal';
 import { BackgroundUniverse3D, FXLevel } from './components/BackgroundUniverse3D';
@@ -440,9 +441,9 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
         </div>
       )}
 
-      {/* Reusable Full Profile Modal */}
+      {/* Full 3D Hero Profile Page (Matching Mohit's Home 3D Screen) */}
       {activeProfileId && activeFriend && (
-        <FullProfileModal
+        <FriendHeroProfile3D
           friend={activeFriend}
           onClose={() => handleCloseProfile(true)}
           onOpenLightbox={(img) => setLightboxImageUrl(img)}

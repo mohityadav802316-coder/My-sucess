@@ -1,106 +1,96 @@
-# CyberMohit AI 3D Portfolio Import & Firebase Integration
+# Cinematic 3D Friend Profile Hero Experience
 
-Import and configure the complete bilingual (English/Hindi) 3D cyberpunk digital portfolio for Mohit Yadav from the uploaded archive, integrating live Firebase Firestore, Authentication, and hardware-accelerated Three.js scenes with zero-trust security.
+Transform the Friend Profile experience from a static 2D modal into a high-fidelity, full-screen 3D Hero Page that matches the aesthetic, visual fidelity, and interactivity of Mohit's main 3D home screen (featuring interactive 3D Phone, 3D Photo Orbit, custom accent-colored lighting, direct 1-click WhatsApp chat, and admin-managed details).
 
-### User Review & Critical Decisions
+## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following recommended architectural choices will be enacted during execution:
-> - **Firebase Backend**: Enable live Firebase Cloud Firestore and Firebase Authentication with security rules for public visitor guestbook submissions, contact inquiries, and authenticated admin content management.
-> - **Zero-Trust Admin Authentication**: Support Firebase Authentication using authorized administrator email credentials (`mohityadav802316@gmail.com`, `yadavshiv16478@gmail.com`) with role verification against Firestore.
-> - **Three.js Performance & Reliability**: Retain the 5-zone Multiverse 3D background canvas, 3D flagship smartphone chassis, and 3D optical lens viewer with ACESFilmic tone mapping, RoomEnvironment reflections, and procedural fallbacks for all external textures to eliminate CORS/404 errors.
-> - **Offline Resilience**: Maintain complete baseline fallbacks (`defaultProjects`, `defaultSkills`, `defaultFriendsList`, `defaultFamilyMembers`) so the application renders cleanly and without errors even if network connectivity is interrupted.
+> All three design preferences from Phase 1 have been incorporated into this plan:
+> 1. **Full 3D Hero Page**: The friend profile will render as an immersive full-screen 3D hero page just like Mohit's home screen, rather than a flat card popup.
+> 2. **Focused & Clean Content**: Strictly presents admin-editable fields (Photo, Name, Nickname/Role, Bio, WhatsApp 1-Click Chat, and Social links) with zero clutter.
+> 3. **Custom Accent Lighting**: 3D lighting, holographic rings, button glows, and particle sparks automatically tint to each friend's unique accent color (configured in Admin Panel).
 
----
+## 1. Overview & Core Concept
 
-### 1. Overview & Core Concept
+- **What It Does**: When any friend is clicked in the Friends Universe or opened via a shareable link (`?friend=ID`), the app renders a dedicated full-screen 3D Hero View. On the right, the interactive 3D Floating Phone showcases the friend's photo with interactive 3D Phone and 3D Photo Orbit switchers. On the left, bold cinematic typography displays the friend's name, role, bio, and prominent 1-click WhatsApp and social links.
+- **Target Audience**: Visitors and friends viewing individual profiles on mobile or desktop devices.
+- **Key Value**: Replaces the generic flat card with an ultra-premium, cinematic 3D personal showcase that elevates every friend to the same prestige level as the main portfolio hero.
 
-- **What It Does**: A cinematic, bilingual (English & Hindi) digital portfolio showcasing Mohit Yadav's background (BSEB Class 12 Science PCM student, aspiring AI Engineer, Python developer, and defensive cybersecurity builder). It features interactive 3D WebGL scenes, real-time technology consoles, Free Fire squad dossiers in "Friends Universe", password-protected "Family Vault", and a visitor uplink guestbook.
-- **Target Audience / Persona**: Tech recruiters, engineering peers, collaborators, mentors, and friends exploring Mohit's technical accomplishments and journey.
-- **Key Value**: Delivers a memorable, futuristic visual presence while providing full admin content management for projects, skills, roadmap milestones, and photo uploads.
+## 2. User Experience & Visual Design
 
----
+### Key User Flows
+1. **Entering Friend 3D View**:
+   - User taps a friend row or 3D card in Friends Universe (or opens a shared URL `?friend=xyz`).
+   - A smooth cinematic fade/scale transition opens the **Friend 3D Hero Page**.
+2. **Interactive 3D Exploration**:
+   - Visitors can toggle between **3D Phone View** (interactive phone with gyro/pointer tilt displaying the friend's avatar/photo) and **3D Photo Orbit** (photos rotating around a central hologram).
+   - Dynamic 3D lighting and ambient particles radiate the friend's custom accent color (e.g. emerald, cyber cyan, electric gold, neon violet).
+3. **Contact & Social Actions**:
+   - Prominent, glowing 1-click **WhatsApp Direct Chat** button opens `https://wa.me/...` directly.
+   - Clean unboxed social links (Instagram, GitHub, LinkedIn, Portfolio).
+   - One-tap **Share Friend Link** button to copy/share their direct 3D URL.
+   - Top-left "← Back to Friends" button smoothly returns to the Universe dock/list.
 
-### 2. User Experience & Visual Design
+### Visual Identity & Theme
+- **Dominant Neutral Canvas**: Obsidian dark slate (`#0A0D14` / `#0B0F19`) matching the cyber portfolio.
+- **Dynamic Accent**: Injected dynamically from `friend.accent` (defaults to `#00F2FE` or `#FFB53D` for Squad members).
+- **Typography**: Display font for friend's name (`font-cyber font-black tracking-tight`), monospace metadata for role and stats, readable body prose for bio narrative.
+- **Zero-Pill Discipline**: All tags and roles rendered as clean unboxed typographic labels with bullet separators.
 
-- **Key User Flows**:
-  1. *Visitor Exploration*: Lands on deep obsidian viewport with ambient cyber nodes and optional kinetic typography intro; scrolls through 10 synchronized scenes (Hero with 3D phone orbit, About with BSEB credentials, Universal Tech Console with 3D optical lens, Cyber Security terminal simulation, Skills with 3D meters, Roadmap timeline, Projects matrix, 3D Gallery, Guestbook, and Contact uplink).
-  2. *Bilingual Toggle*: Instant single-click toggle between English (`ENG`) and Hindi (`हिंदी`) updates all section headings, role badges, descriptions, and buttons reactively without reload.
-  3. *Visitor Guestbook & Contact Form*: Visitors submit short notes (<150 characters) or contact transmissions; verified payloads persist to Firestore, triggering celebration confetti and success chimes.
-  4. *Friends Universe & Family Vault*: Floating interactive portals showcase friends dossiers and Free Fire squad cards; family sanctuary unlocks with encrypted PIN.
-  5. *Admin Command Plane*: Access with authorized credentials opens a comprehensive dashboard with 13 management modules (Skills, Projects, Milestones, Media, Friends, Content, Theme, Audio, Security, and Backup).
+## 3. Key Product Decisions & Trade-Offs
 
-- **Visual Identity & Theme**:
-  - *Aesthetic Direction*: Cinematic Multiverse Cyberpunk inspired by Doctor Strange (Eldritch amber/gold runic mandalas) and Wanda Maximoff (Scarlet Witch crimson chaos magic) with crisp HUD instrumentation.
-  - *Color Palette & Tokens*:
-    - 60% Dominant Base: Deep Obsidian Slate (`#020617` / `#030712`)
-    - 30% Structural Surfaces: Elevated glassmorphic cards (`#0b0f19` / `rgba(15, 23, 42, 0.75)` with hairline borders)
-    - 10% Vibrant Accents: Eldritch Amber (`#f59e0b`), Astral Cyan (`#06b6d4`), Wanda Scarlet (`#e11d48`), and Quantum Emerald (`#10b981`)
-  - *Typography*:
-    - Display / Headings: `Orbitron` (weights 700, 900) for hero brands and monogram marks
-    - Section Subtitles & Badges: `Rajdhani` (weights 600, 700) for tech consoles and cards
-    - Code / Metrics: `JetBrains Mono` with `tabular-nums`
-    - Body / Hindi: `Noto Sans Devanagari` and system sans
-  - *Interactive Feedback & Audio*: Zero-latency procedural Web Audio synthesizer generates sci-fi UI clicks, hover tones, and chimes without external MP3 asset dependencies; includes global mute toggle.
+- **Decision 1: Full-Screen 3D Overlay vs In-Modal 3D Canvas**
+  - *Chosen Approach*: Full-screen 3D hero overlay (`FriendHeroProfile3D`).
+  - *Why*: Allows Three.js WebGL canvas to have natural viewport dimensions and spatial depth, mirroring `HeroSection`, without being cramped inside a modal container.
+  - *Alternatives Considered*: A small 3D canvas inside the existing popup card was rejected because it felt cramped, low quality, and caused performance hitches.
+- **Decision 2: Reusing Proven 3D Engine (`FloatingPhoneHero3D` & `PhotoOrbitHero3D`)**
+  - *Chosen Approach*: Adapt `FloatingPhoneHero3D` and `PhotoOrbitHero3D` with friend image adapters and color tint props.
+  - *Why*: Zero new heavy bundle dependencies; battle-tested WebGL shaders, smooth touch/mouse orbit controls, and mobile performance optimizations already built-in.
+- **Decision 3: Scope of Friend Details**
+  - *Chosen Approach*: Strictly render fields editable via Admin Panel (`name`, `nickname`, `user/role`, `avatar`, `photos`, `bio`, `whatsapp`, `socials`, `accent`, `squad`).
+  - *Why*: Prevents fake or empty fields; guarantees 100% data fidelity with Firestore.
 
----
+## 4. Technical Architecture & Data Strategy
 
-### 3. Key Product Decisions & Trade-Offs
-
-- **Decision 1: Full Archive Extraction & Workspace Setup**
-  - *Chosen Approach*: Extract all 124 files from `public/assets/aistudio/project-importer_09c403cc.zip` directly into the project root, preserving the complete component modularity, 3D scenes, admin managers, and styles.
-  - *Why*: Preserves 100% of the audited code, design system, and multi-layered features without loss or regressions.
-- **Decision 2: Live Firebase Firestore Provisioning with Local Fallback**
-  - *Chosen Approach*: Provision Firebase via AI Studio tools and wire Firestore collections (`messages`, `guestbook`, `settings`, `images`, `friends`, `family_members`, `admins`). In `src/firebase.ts`, use live Firebase SDK when configured, with seamless offline caching.
-  - *Why*: Enables real-time visitor submissions and multi-device persistence while ensuring zero crash risk if offline.
-- **Decision 3: Zero-Trust Security Rules & Audit Repair**
-  - *Chosen Approach*: Deploy `firestore.rules` enforcing strict validation, max-size string boundaries, server timestamps (`request.time`), and administrator authorization. Address `BUG-004` so default emergency PINs cannot bypass custom credentials.
-  - *Why*: Protects private friend notes, family records, and admin mutations from unauthorized tampering.
-- **Decision 4: Robust Three.js WebGL Asset Fallback**
-  - *Chosen Approach*: Implement `crossOrigin = 'anonymous'` and procedural gradient/canvas fallbacks for all texture loading in `FloatingPhoneHero3D.tsx` and `PhotoOrbitHero3D.tsx`.
-  - *Why*: Eliminates WebGL security taint errors if remote external image URLs lack permissive CORS headers.
-
----
-
-### 4. Technical Architecture & Data Strategy
-
+### System & Component Flow
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        INDEX.HTML / APP BOOTSTRAP                      │
-│            Google Fonts: Orbitron, Rajdhani, Noto Sans Devanagari       │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                      CONTEXT PROVIDERS & APP ROOT                      │
-│   ├── LanguageProvider (mode: 'en' | 'hi', reactive toggle)            │
-│   └── ImageProvider (Firestore listeners, site settings, fallbacks)    │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-         ┌──────────────────────────┴──────────────────────────┐
-         ▼                                                     ▼
-┌──────────────────────────────┐              ┌──────────────────────────────┐
-│     BACKGROUND & 3D GPU      │              │      PAGE SECTIONS & HUD     │
-│  - CyberBackground (Canvas)  │              │  - CyberNavbar (Header)      │
-│  - CinematicCanvas3D (5-Zone)│              │  - HeroSection (3D Phone)    │
-│  - MysticTouchSparks (VFX)   │              │  - UniversalTechConsole (Lens│
-│  - BackgroundMusic (Audio)   │              │  - CyberSecuritySection      │
-│  - IntroScreen (Assembly)    │              │  - Skills, Roadmap, Projects │
-└──────────────────────────────┘              │  - Gallery, Guestbook, Contact│
-                                              └──────────────┬───────────────┘
-                                                             │
-         ┌───────────────────────────────────────────────────┴─────────┐
-         ▼                                                             ▼
-┌──────────────────────────────┐                              ┌────────────────┐
-│      INTERACTIVE MODALS      │                              │    BACKEND     │
-│  - FriendsUniverse (Squad 3D)│ ◄──────────Sync────────────► │  Cloud         │
-│  - FamilyVaultModal (Passcode│                              │  Firestore     │
-│  - AdminModal (13 Managers)  │                              │  & Auth        │
-└──────────────────────────────┘                              └────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                   FriendsUniverse.tsx                  │
+│       (Current category dock, list, share link)        │
+└───────────────────────────┬────────────────────────────┘
+                            │ On select friend
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│               FriendHeroProfile3D.tsx                  │
+│   Full-screen 3D Hero Page (replaces FullProfileModal) │
+├───────────────────────────┬────────────────────────────┤
+│ Left Column (DOM UI)      │ Right Column (3D WebGL)    │
+│ - Back to Friends button  │ - 3D View Switcher         │
+│ - Share Profile Link      │   (Phone vs Orbit)         │
+│ - Squad Member Badge      │ - FloatingPhoneHero3D      │
+│ - Friend Name & Nickname  │   (Friend photo on screen) │
+│ - Bio narrative           │ - PhotoOrbitHero3D         │
+│ - 1-Click WhatsApp Button │   (Friend photo orbit)     │
+│ - Social & Contact Links  │ - Tinted 3D scene lights   │
+└───────────────────────────┴────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│             Firestore 'friends' Collection             │
+│            (Real-time reactive synchronization)        │
+└────────────────────────────────────────────────────────┘
 ```
 
-- **Interactive State Handlers**:
-  - `HeroSection` / `PhotoOrbitHero3D`: Pointer dragging modifies orbit rotation matrix with inertia spring decay.
-  - `UniversalTechConsole`: Category tabs filter registry; clicking a technology mounts `Lens3DViewer` with dynamic refraction lighting; 1-click code copying to clipboard.
-  - `GuestbookSection`: Form submission validates non-empty inputs, profanity filtering, writes to `guestbook` collection in Firestore, and fires canvas confetti.
-  - `AdminModal`: Authenticates credentials against Firebase Auth / Firestore `admins` collection; provides full CRUD operations across all portfolio data.
+### Component Structure
+1. **`src/friends/components/FriendHeroProfile3D.tsx`**:
+   - Replaces `FullProfileModal.tsx` as the primary profile display component.
+   - Takes `friend: Friend`, `onClose: () => void`, `onOpenLightbox: (url: string) => void`.
+   - Adapts friend photos into `PortfolioImage` structure for `FloatingPhoneHero3D` and `PhotoOrbitHero3D`.
+   - Includes 3D Phone vs 3D Orbit view switcher.
+   - Embeds 1-click WhatsApp chat and verified social links.
+2. **`src/friends/FriendsUniverse.tsx`**:
+   - Wire `activeProfileId` to render `FriendHeroProfile3D` instead of `FullProfileModal`.
+   - Maintain seamless URL hash/param deep-linking (`/?friend=ID`).
+3. **Performance & Mobile Viewport**:
+   - Responsive grid (`grid-cols-1 lg:grid-cols-12`).
+   - On mobile screens, 3D Phone scales gracefully without clipping, keeping touch targets accessible.

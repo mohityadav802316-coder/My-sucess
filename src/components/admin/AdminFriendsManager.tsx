@@ -445,10 +445,45 @@ export const AdminFriendsManager: React.FC = () => {
     setIsDirty(true);
   };
 
-  // Update Social Link
+  // Update Social Link with smart auto-detection
   const handleUpdateSocialLink = (index: number, patch: Partial<FriendSocialLink>) => {
     const updated = [...links];
-    updated[index] = { ...updated[index], ...patch };
+    let newLink = { ...updated[index], ...patch };
+
+    // Auto-detect platform and clean label if user pasted/typed a recognized domain
+    if (patch.url && patch.url !== updated[index].url) {
+      const lower = patch.url.toLowerCase();
+      if (lower.includes('instagram.com') || lower.includes('instagr.am')) {
+        newLink.platform = 'instagram';
+        if (!newLink.label || newLink.label === 'Custom' || newLink.label === 'Label') newLink.label = 'Instagram';
+      } else if (lower.includes('facebook.com') || lower.includes('fb.com') || lower.includes('fb.me')) {
+        newLink.platform = 'facebook';
+        if (!newLink.label || newLink.label === 'Custom' || newLink.label === 'Label') newLink.label = 'Facebook';
+      } else if (lower.includes('youtube.com') || lower.includes('youtu.be')) {
+        newLink.platform = 'youtube';
+        if (!newLink.label || newLink.label === 'Custom' || newLink.label === 'Label') newLink.label = 'YouTube';
+      } else if (lower.includes('twitter.com') || lower.includes('x.com')) {
+        newLink.platform = 'x';
+        if (!newLink.label || newLink.label === 'Custom' || newLink.label === 'Label') newLink.label = 'X (Twitter)';
+      } else if (lower.includes('snapchat.com')) {
+        newLink.platform = 'snapchat';
+        if (!newLink.label || newLink.label === 'Custom' || newLink.label === 'Label') newLink.label = 'Snapchat';
+      } else if (lower.includes('github.com')) {
+        newLink.platform = 'github';
+        if (!newLink.label || newLink.label === 'Custom' || newLink.label === 'Label') newLink.label = 'GitHub';
+      } else if (lower.includes('linkedin.com')) {
+        newLink.platform = 'linkedin';
+        if (!newLink.label || newLink.label === 'Custom' || newLink.label === 'Label') newLink.label = 'LinkedIn';
+      } else if (lower.includes('t.me') || lower.includes('telegram.me')) {
+        newLink.platform = 'telegram';
+        if (!newLink.label || newLink.label === 'Custom' || newLink.label === 'Label') newLink.label = 'Telegram';
+      } else if (lower.includes('discord.gg') || lower.includes('discord.com')) {
+        newLink.platform = 'discord';
+        if (!newLink.label || newLink.label === 'Custom' || newLink.label === 'Label') newLink.label = 'Discord';
+      }
+    }
+
+    updated[index] = newLink;
     setLinks(updated);
     setIsDirty(true);
   };
@@ -1483,8 +1518,10 @@ export const AdminFriendsManager: React.FC = () => {
                           <option value="snapchat">Snapchat</option>
                           <option value="github">GitHub</option>
                           <option value="linkedin">LinkedIn</option>
+                          <option value="telegram">Telegram</option>
+                          <option value="discord">Discord</option>
                           <option value="portfolio">Portfolio</option>
-                          <option value="custom">Custom</option>
+                          <option value="custom">Custom (अन्य लिंक)</option>
                         </select>
 
                         {/* Label */}

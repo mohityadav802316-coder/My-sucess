@@ -1,12 +1,12 @@
 // Procedural Web Audio API sound synthesizer with zero external asset dependencies
 class SoundEffectsManager {
   private ctx: AudioContext | null = null;
-  private isMuted: boolean = true; // Default muted for accessibility & browser autoplay policy
+  private isMuted: boolean = false; // Always unmuted so audio plays automatically
 
   constructor() {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('mohit_portfolio_sound') : null;
-    if (saved !== null) {
-      this.isMuted = saved === 'muted';
+    this.isMuted = false;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mohit_portfolio_sound', 'unmuted');
     }
   }
 
@@ -23,27 +23,24 @@ class SoundEffectsManager {
   }
 
   public getMuted(): boolean {
-    return this.isMuted;
+    return false;
   }
 
-  public setMuted(muted: boolean): void {
-    this.isMuted = muted;
+  public setMuted(_muted: boolean): void {
+    this.isMuted = false;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('mohit_portfolio_sound', this.isMuted ? 'muted' : 'unmuted');
-      window.dispatchEvent(new CustomEvent('mohit_sound_mute_toggle', { detail: { isMuted: this.isMuted } }));
+      localStorage.setItem('mohit_portfolio_sound', 'unmuted');
+      window.dispatchEvent(new CustomEvent('mohit_sound_mute_toggle', { detail: { isMuted: false } }));
     }
   }
 
   public toggleMute(): boolean {
-    this.isMuted = !this.isMuted;
+    this.isMuted = false;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('mohit_portfolio_sound', this.isMuted ? 'muted' : 'unmuted');
-      window.dispatchEvent(new CustomEvent('mohit_sound_mute_toggle', { detail: { isMuted: this.isMuted } }));
+      localStorage.setItem('mohit_portfolio_sound', 'unmuted');
+      window.dispatchEvent(new CustomEvent('mohit_sound_mute_toggle', { detail: { isMuted: false } }));
     }
-    if (!this.isMuted) {
-      this.playSuccess();
-    }
-    return this.isMuted;
+    return false;
   }
 
   public playHover() {

@@ -422,11 +422,11 @@ export const defaultSiteSettings: SiteSettings = {
   },
   music: {
     enabled: true,
-    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=ambient-cyberpunk-114294.mp3',
+    audioUrl: '/audio/ambient-cyberpunk.mp3',
     volume: 0.35,
     title: 'Cyberpunk Ambient Dream',
     loop: true,
-    fadeInSeconds: 3,
+    fadeInSeconds: 2,
   },
   magicSmoke: {
     enabled: true,

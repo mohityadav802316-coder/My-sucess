@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { sound } from './audio/SoundEffects';
 import {
-  Volume2,
-  VolumeX,
   Languages,
   Shield,
   Menu,
@@ -29,7 +27,6 @@ export const CyberNavbar: React.FC<CyberNavbarProps> = ({
   onOpenFriends,
 }) => {
   const { mode, setMode } = useLanguage();
-  const [isMuted, setIsMuted] = useState(sound.getMuted());
   const [isLowEffects, setIsLowEffects] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('mohit_low_effects') === 'true';
@@ -37,11 +34,6 @@ export const CyberNavbar: React.FC<CyberNavbarProps> = ({
     return false;
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const toggleSound = () => {
-    const muted = sound.toggleMute();
-    setIsMuted(muted);
-  };
 
   const toggleLanguage = () => {
     sound.playClick();
@@ -171,20 +163,6 @@ export const CyberNavbar: React.FC<CyberNavbarProps> = ({
             <span className="font-semibold uppercase text-[11px]">
               {mode === 'hi' ? 'हिंदी' : 'ENG'}
             </span>
-          </button>
-
-          {/* Sound Mute/Unmute */}
-          <button
-            onClick={toggleSound}
-            className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-amber-300 border border-slate-800 hover:border-amber-500/30 rounded-lg text-xs transition cursor-pointer active:scale-95"
-            title={isMuted ? 'Unmute Sound FX' : 'Mute Sound FX'}
-            aria-label="Toggle sound"
-          >
-            {isMuted ? (
-              <VolumeX className="w-3.5 h-3.5 text-slate-500" />
-            ) : (
-              <Volume2 className="w-3.5 h-3.5 text-amber-400" />
-            )}
           </button>
 
           {/* Admin Panel Entry */}

@@ -21,6 +21,7 @@ import {
 import {
   initializeFirestore,
   getFirestore,
+  setLogLevel,
   doc,
   getDoc,
   getDocFromServer,
@@ -49,13 +50,16 @@ import firebaseConfig from '../firebase-applet-config.json';
 // Initialize Firebase App singleton
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Database instance with experimentalForceLongPolling for iframe & Cloud Run sandbox compatibility
+// Suppress non-critical Firestore network timeout warnings in dev console
+setLogLevel('error');
+
+// Database instance with experimentalAutoDetectLongPolling for best WebSocket + iframe compatibility
 let firestoreDb;
 try {
   firestoreDb = initializeFirestore(
     app,
     {
-      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: true,
     },
     firebaseConfig.firestoreDatabaseId
   );
@@ -129,22 +133,39 @@ export function handleFirestoreError(
 }
 
 export async function testFirestoreConnection(): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return false;
+  }
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    const probeTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Connection probe timeout')), 4000)
+    );
+    await Promise.race([
+      getDocFromServer(doc(db, 'test', 'connection')),
+      probeTimeout,
+    ]);
     return true;
   } catch (error) {
-    if (error instanceof Error) {
-      console.warn('Firestore connection notice (offline cache active):', error.message);
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      // Graceful offline operation handled automatically by Firebase offline cache
+      return false;
     }
     return false;
   }
 }
 
-// Initial boot probe (deferred until network idle)
+// Initial boot probe (deferred until page has finished loading and network is idle)
 if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    testFirestoreConnection().catch(() => {});
-  }, 1000);
+  window.addEventListener('load', () => {
+    const runProbe = () => {
+      testFirestoreConnection().catch(() => {});
+    };
+    if ('requestIdleCallback' in window) {
+      (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(runProbe);
+    } else {
+      setTimeout(runProbe, 3000);
+    }
+  });
 }
 
 export function isUserAdmin(user: User | null): boolean {

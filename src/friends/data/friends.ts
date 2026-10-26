@@ -83,6 +83,7 @@ export interface Friend {
   role?: string | null;
   dob?: string | null;
   dobShowYear?: boolean;
+  whatsapp?: string | null;
   links: FriendSocialLink[];
   accent?: string; // Friend's custom hex accent color
   online: boolean | null; // null by default - real system not linked

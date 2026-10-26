@@ -167,3 +167,87 @@ export async function uploadToCloudinary(
     bytes: data.bytes,
   };
 }
+
+export interface CloudinaryAudioUploadResult {
+  url: string;
+  secureUrl: string;
+  publicId: string;
+  format: string;
+  duration?: number;
+  bytes: number;
+}
+
+/**
+ * Direct Unsigned Audio / MP3 Upload to Cloudinary API
+ * Cloudinary classifies audio under resource_type 'video' or 'auto'.
+ * Uploads directly to Cloudinary without Firebase or Supabase.
+ */
+export async function uploadAudioToCloudinary(
+  file: File,
+  folder = 'portfolio_audio'
+): Promise<CloudinaryAudioUploadResult> {
+  const { cloudName, uploadPreset, isConfigured } = getCloudinaryConfig();
+
+  if (!isConfigured) {
+    throw new Error('Cloudinary config missing: Please set Cloud Name and Upload Preset in Admin Panel.');
+  }
+
+  // Cloudinary uses /video/upload for audio files (mp3, wav, ogg, m4a)
+  const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`;
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', uploadPreset);
+  formData.append('resource_type', 'video');
+  if (folder) {
+    formData.append('folder', folder);
+  }
+
+  let response = await fetch(endpoint, {
+    method: 'POST',
+    body: formData,
+  });
+
+  // Fallback to /auto/upload if /video/upload rejected
+  if (!response.ok) {
+    let errorDetail = 'Cloudinary video endpoint failed';
+    try {
+      const errJson = await response.json();
+      errorDetail = errJson.error?.message || errorDetail;
+    } catch {}
+
+    const autoEndpoint = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+    const autoFormData = new FormData();
+    autoFormData.append('file', file);
+    autoFormData.append('upload_preset', uploadPreset);
+    if (folder) {
+      autoFormData.append('folder', folder);
+    }
+
+    const autoResp = await fetch(autoEndpoint, {
+      method: 'POST',
+      body: autoFormData,
+    });
+
+    if (!autoResp.ok) {
+      let autoError = errorDetail;
+      try {
+        const autoJson = await autoResp.json();
+        autoError = autoJson.error?.message || autoError;
+      } catch {}
+      throw new Error(`Cloudinary Audio Upload Error: ${autoError}`);
+    }
+
+    response = autoResp;
+  }
+
+  const data = await response.json();
+
+  return {
+    url: data.url,
+    secureUrl: data.secure_url,
+    publicId: data.public_id,
+    format: data.format || file.name.split('.').pop() || 'mp3',
+    duration: data.duration,
+    bytes: data.bytes || file.size,
+  };
+}

@@ -40,6 +40,8 @@ import {
   Lock,
   ExternalLink,
   RotateCw,
+  MessageCircle,
+  Phone,
 } from 'lucide-react';
 
 const PRESET_ACCENT_COLORS = [
@@ -88,6 +90,7 @@ export const AdminFriendsManager: React.FC = () => {
   const [formFfName, setFormFfName] = useState('');
   const [formFfUid, setFormFfUid] = useState('');
   const [formRole, setFormRole] = useState('');
+  const [formWhatsapp, setFormWhatsapp] = useState('');
   const [formIsVisible, setFormIsVisible] = useState(true);
   const [formOrder, setFormOrder] = useState(1);
 
@@ -157,6 +160,7 @@ export const AdminFriendsManager: React.FC = () => {
     setFormFfName('');
     setFormFfUid('');
     setFormRole('');
+    setFormWhatsapp('');
     setFormIsVisible(true);
     setFormOrder(friends.length + 1);
 
@@ -199,6 +203,7 @@ export const AdminFriendsManager: React.FC = () => {
     setFormFfName(f.ffName || '');
     setFormFfUid(f.ffUid || '');
     setFormRole(f.role || '');
+    setFormWhatsapp(f.whatsapp || '');
     setFormIsVisible(f.isVisible !== false);
     setFormOrder(f.order || 1);
 
@@ -549,6 +554,7 @@ export const AdminFriendsManager: React.FC = () => {
         role: publicRole,
         dob: publicDob,
         dobShowYear: formDobShowYear,
+        whatsapp: formWhatsapp.trim() || null,
         links: links.map((l) => ({ ...l, url: l.url.trim() })),
         accent: formAccent,
         order: Number(formOrder) || 1,
@@ -952,7 +958,7 @@ export const AdminFriendsManager: React.FC = () => {
                           }`}
                           style={{ backgroundColor: c.hex }}
                           title={c.name}
-                        />
+                        ></button>
                       ))}
                       <input
                         type="color"
@@ -1401,12 +1407,44 @@ export const AdminFriendsManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* SECTION 5: SOCIAL LINKS */}
+              {/* SECTION 5: WHATSAPP DIRECT CHAT & SOCIAL LINKS */}
               <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
+                {/* Dedicated WhatsApp 1-Click Chat Field */}
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-950 to-slate-900 border border-emerald-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-mono font-bold text-emerald-300 flex items-center gap-1.5">
+                      <MessageCircle className="w-4 h-4 text-emerald-400 fill-emerald-400/20" />
+                      <span>व्हाट्सएप नंबर (WhatsApp Direct Chat)</span>
+                    </label>
+                    <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                      Direct 1-Click wa.me
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-slate-950 border border-emerald-500/40 rounded-xl px-3 py-2 w-full focus-within:border-emerald-400">
+                      <span className="text-xs font-mono text-emerald-500/80 select-none mr-2 font-bold">wa.me /</span>
+                      <input
+                        type="text"
+                        value={formWhatsapp}
+                        onChange={(e) => {
+                          setFormWhatsapp(e.target.value);
+                          setIsDirty(true);
+                        }}
+                        placeholder="जैसे: 9876543210 या +919876543210"
+                        className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    वेबसाइट पर कोई भी यूजर जब इस दोस्त के <strong className="text-emerald-300">WhatsApp</strong> बटन पर क्लिक करेगा, तो वह सीधे उस नंबर की WhatsApp चैट पर पहुँच जाएगा।
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
                   <h5 className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-widest flex items-center gap-2">
                     <LinkIcon className="w-4 h-4" />
-                    <span>5. सोशल मीडिया लिंक्स (Social Links)</span>
+                    <span>सोशल मीडिया लिंक्स (Social Links)</span>
                   </h5>
                   <button
                     type="button"

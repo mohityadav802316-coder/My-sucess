@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
-import { storage, ref, uploadBytes, getDownloadURL } from '../../firebase';
+import { uploadAudioToCloudinary } from '../../services/cloudinary';
 import {
   Volume2,
   VolumeX,
@@ -17,7 +17,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Sliders,
-  FastForward
+  FastForward,
+  Copy,
+  Check
 } from 'lucide-react';
 
 export const AdminAudioManager: React.FC = () => {
@@ -27,7 +29,7 @@ export const AdminAudioManager: React.FC = () => {
   // Music State
   const currentMusic = siteSettings.music || {
     enabled: true,
-    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=ambient-cyberpunk-114294.mp3',
+    audioUrl: '',
     volume: 0.35,
     title: 'Cyberpunk Ambient Dream',
     loop: true,
@@ -40,6 +42,7 @@ export const AdminAudioManager: React.FC = () => {
   const [musicTitle, setMusicTitle] = useState(currentMusic.title || 'Ambient Soundtrack');
   const [fadeInSeconds, setFadeInSeconds] = useState(currentMusic.fadeInSeconds || 3);
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   // Black Magic Smoke State
   const currentSmoke = siteSettings.magicSmoke || {
@@ -74,23 +77,34 @@ export const AdminAudioManager: React.FC = () => {
     setStatusMessage(null);
 
     try {
-      const fileExt = file.name.split('.').pop() || 'mp3';
-      const storagePath = `portfolio/music/bgm_${Date.now()}.${fileExt}`;
-      const storageRef = ref(storage, storagePath);
+      // Direct Unsigned Upload to Cloudinary API without Firebase or Supabase
+      const result = await uploadAudioToCloudinary(file, 'portfolio_audio');
 
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
+      setAudioUrl(result.secureUrl);
+      const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
+      setMusicTitle(cleanTitle);
 
-      setAudioUrl(downloadUrl);
-      setMusicTitle(file.name.replace(/\.[^/.]+$/, ''));
+      // Auto-persist directly into siteSettings so it is live immediately
+      await updateSiteSettings({
+        music: {
+          ...currentMusic,
+          enabled: true,
+          audioUrl: result.secureUrl,
+          title: cleanTitle,
+          volume,
+          loop: true,
+        },
+      });
+
       sound.playSuccess();
       setStatusMessage({
         type: 'success',
-        text: 'Audio track successfully uploaded to Firebase Storage!',
+        text: 'ऑडियो Cloudinary CDN पर सफलतापूर्वक अपलोड हो गया और बैकग्राउंड म्यूजिक में सेट हो गया!',
       });
     } catch (err: any) {
-      console.error('Audio upload error:', err);
-      setStatusMessage({ type: 'error', text: 'Audio upload failed: ' + err.message });
+      console.error('Cloudinary audio upload error:', err);
+      sound.playAlert();
+      setStatusMessage({ type: 'error', text: 'Cloudinary Audio Upload Failed: ' + err.message });
     } finally {
       setUploadingAudio(false);
     }
@@ -223,33 +237,77 @@ export const AdminAudioManager: React.FC = () => {
                 type="text"
                 value={audioUrl}
                 onChange={(e) => setAudioUrl(e.target.value)}
-                placeholder="https://... audio url"
+                placeholder="https://res.cloudinary.com/... or paste MP3 URL"
                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
               />
+              {audioUrl && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(audioUrl);
+                      setCopiedUrl(true);
+                      setTimeout(() => setCopiedUrl(false), 2000);
+                    }}
+                    className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedUrl ? 'Copied URL!' : 'Copy Direct Audio URL'}</span>
+                  </button>
+                  <span className="text-[10px] font-mono text-slate-500">|</span>
+                  <a
+                    href={audioUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] font-mono text-slate-400 hover:text-white underline truncate max-w-xs"
+                  >
+                    Open Audio Link
+                  </a>
+                </div>
+              )}
             </div>
 
-            {/* Upload to Firebase Storage */}
-            <div className="p-3 rounded-2xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-mono font-bold text-white block">Upload Song File</span>
-                <span className="text-[10px] text-slate-400 block">Directly saves to Firebase Storage</span>
+            {/* Upload MP3 directly to Cloudinary CDN */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900 to-amber-950/20 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-amber-300 flex items-center gap-1.5">
+                    <Music className="w-3.5 h-3.5 text-amber-400" />
+                    Upload MP3 Song (Cloudinary CDN)
+                  </span>
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40">
+                    No Firebase / 100% Cloudinary
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 block font-mono">
+                  Cloud: xdwssllt • Uploads directly to Cloudinary and sets background music
+                </span>
               </div>
-              <label className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono text-xs font-bold cursor-pointer transition active:scale-95">
-                <Upload className="w-3.5 h-3.5 inline mr-1" />
-                <span>Upload Song</span>
+              <label className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-mono text-xs font-black cursor-pointer transition shadow-md shadow-orange-500/20 flex items-center justify-center gap-1.5 active:scale-95 shrink-0">
+                <Upload className="w-3.5 h-3.5" />
+                <span>{uploadingAudio ? 'Uploading...' : 'Select MP3 Song'}</span>
                 <input
                   type="file"
-                  accept="audio/*"
+                  accept="audio/mp3,audio/mpeg,audio/wav,audio/ogg,audio/m4a,audio/*,.mp3,.wav,.ogg,.m4a"
                   onChange={handleAudioUpload}
+                  disabled={uploadingAudio}
                   className="hidden"
                 />
               </label>
             </div>
 
             {uploadingAudio && (
-              <span className="text-xs font-mono text-amber-400 block animate-pulse">
-                Uploading audio file to Firebase Storage...
-              </span>
+              <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/40 space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-mono text-cyan-300">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                    Uploading song directly to Cloudinary CDN (video/upload API)...
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="w-3/4 h-full bg-gradient-to-r from-cyan-400 to-amber-400 animate-pulse rounded-full" />
+                </div>
+              </div>
             )}
 
             {/* Volume Slider */}

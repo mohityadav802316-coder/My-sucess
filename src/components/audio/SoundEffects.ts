@@ -26,6 +26,14 @@ class SoundEffectsManager {
     return this.isMuted;
   }
 
+  public setMuted(muted: boolean): void {
+    this.isMuted = muted;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mohit_portfolio_sound', this.isMuted ? 'muted' : 'unmuted');
+      window.dispatchEvent(new CustomEvent('mohit_sound_mute_toggle', { detail: { isMuted: this.isMuted } }));
+    }
+  }
+
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
     if (typeof window !== 'undefined') {

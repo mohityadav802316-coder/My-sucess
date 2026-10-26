@@ -2,54 +2,132 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useImages } from '../../context/ImageContext';
 import { sound } from './SoundEffects';
 
+// Procedural Cyberpunk Ambient Drone Synthesizer (Zero network dependencies, 100% reliable fallback)
+class ProceduralAmbientSynth {
+  private ctx: AudioContext | null = null;
+  private masterGain: GainNode | null = null;
+  private oscillators: OscillatorNode[] = [];
+  private isRunning = false;
+
+  public start(targetVolume = 0.22) {
+    if (this.isRunning) return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      this.ctx = new AudioCtx();
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      this.masterGain.gain.exponentialRampToValueAtTime(Math.max(targetVolume, 0.01), this.ctx.currentTime + 2.5);
+      this.masterGain.connect(this.ctx.destination);
+
+      // Lowpass resonant filter for warm analog sci-fi sound
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(450, this.ctx.currentTime);
+      filter.Q.setValueAtTime(2.2, this.ctx.currentTime);
+      filter.connect(this.masterGain);
+
+      // LFO for breathing filter sweep
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+      lfo.frequency.setValueAtTime(0.07, this.ctx.currentTime);
+      lfoGain.gain.setValueAtTime(160, this.ctx.currentTime);
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+      lfo.start();
+      this.oscillators.push(lfo);
+
+      // Harmonious Sci-Fi Cyber Chord: C2 (65.41 Hz), G2 (98.00 Hz), C3 (130.81 Hz), D#3 (155.56 Hz), G3 (196.00 Hz)
+      const frequencies = [65.41, 98.0, 130.81, 155.56, 196.0];
+      frequencies.forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const oscGain = this.ctx!.createGain();
+        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, this.ctx!.currentTime);
+
+        // subtle detune for analog chorus warmth
+        osc.detune.setValueAtTime((idx - 2) * 4, this.ctx!.currentTime);
+
+        oscGain.gain.setValueAtTime(0.12 / frequencies.length, this.ctx!.currentTime);
+        osc.connect(oscGain);
+        oscGain.connect(filter);
+        osc.start();
+        this.oscillators.push(osc);
+      });
+
+      this.isRunning = true;
+    } catch (err) {
+      console.warn('Procedural synth init note:', err);
+    }
+  }
+
+  public setVolume(vol: number) {
+    if (this.masterGain && this.ctx) {
+      try {
+        this.masterGain.gain.setTargetAtTime(Math.max(vol, 0.0001), this.ctx.currentTime, 0.1);
+      } catch {}
+    }
+  }
+
+  public stop() {
+    if (!this.isRunning) return;
+    try {
+      if (this.masterGain && this.ctx) {
+        try {
+          this.masterGain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 1);
+        } catch {}
+      }
+      setTimeout(() => {
+        this.oscillators.forEach((o) => {
+          try {
+            o.stop();
+          } catch {}
+        });
+        this.oscillators = [];
+        if (this.ctx && this.ctx.state !== 'closed') {
+          try {
+            this.ctx.close();
+          } catch {}
+        }
+        this.isRunning = false;
+      }, 1000);
+    } catch {
+      this.isRunning = false;
+    }
+  }
+}
+
+const ambientSynth = new ProceduralAmbientSynth();
+
 /**
  * BackgroundMusic
- * - No separate button needed: Starts automatically and loops on the user's first screen tap/touch.
+ * - Starts automatically on the user's VERY FIRST screen touch/click anywhere.
+ * - Plays uploaded Cloudinary MP3 song when available.
+ * - If no MP3 is uploaded or external URL fails, plays our 100% reliable procedural cyber synth.
  * - Synchronizes with CyberNavbar's Mute button.
- * - Smooth fade-in over 3-4 seconds.
- * - Silences or lowers volume automatically if Low Effects or Low Data mode is enabled.
- * - Fully configurable from Admin Panel (song upload, direct URL, volume slider, toggle switch).
  */
 export const BackgroundMusic: React.FC = () => {
   const { siteSettings } = useImages();
 
-  const DEFAULT_AUDIO_URL =
-    'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=ambient-cyberpunk-114294.mp3';
-
-  const rawUrl = siteSettings.music?.audioUrl;
-  const validAudioUrl =
-    rawUrl && typeof rawUrl === 'string' && rawUrl.trim() !== ''
-      ? rawUrl.trim()
-      : DEFAULT_AUDIO_URL;
+  const userAudioUrl = siteSettings.music?.audioUrl?.trim() || '';
 
   const musicSettings = {
     enabled: siteSettings.music?.enabled ?? true,
-    audioUrl: validAudioUrl,
+    audioUrl: userAudioUrl,
     volume: siteSettings.music?.volume ?? 0.35,
     title: siteSettings.music?.title || 'Cyberpunk Ambient Dream',
     loop: siteSettings.music?.loop ?? true,
-    fadeInSeconds: siteSettings.music?.fadeInSeconds ?? 3,
+    fadeInSeconds: siteSettings.music?.fadeInSeconds ?? 2,
   };
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeIntervalRef = useRef<number | null>(null);
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(sound.getMuted());
-  const [isLowEffects, setIsLowEffects] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mohit_low_effects') === 'true';
-    }
-    return false;
-  });
-  const [isLowData, setIsLowData] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return (
-        siteSettings.lowDataMode ||
-        (navigator as any)?.connection?.saveData === true
-      );
-    }
-    return false;
-  });
 
   // Listen for Mute button toggle from CyberNavbar
   useEffect(() => {
@@ -57,119 +135,144 @@ export const BackgroundMusic: React.FC = () => {
       const custom = e as CustomEvent<{ isMuted: boolean }>;
       const nextMuted = custom.detail?.isMuted ?? sound.getMuted();
       setIsMuted(nextMuted);
-    };
 
-    const handleLowEffectsChange = (e: Event) => {
-      const custom = e as CustomEvent<{ lowEffects: boolean }>;
-      setIsLowEffects(custom.detail?.lowEffects ?? false);
+      if (nextMuted) {
+        ambientSynth.setVolume(0);
+        if (audioRef.current) {
+          audioRef.current.muted = true;
+          audioRef.current.pause();
+        }
+      } else {
+        const targetVol = musicSettings.volume || 0.35;
+        if (audioRef.current && userAudioUrl && !audioRef.current.paused) {
+          audioRef.current.muted = false;
+          audioRef.current.volume = targetVol;
+        } else {
+          ambientSynth.setVolume(targetVol);
+        }
+      }
     };
 
     window.addEventListener('mohit_sound_mute_toggle', handleMuteChange);
-    window.addEventListener('mohit_toggle_low_effects', handleLowEffectsChange);
     return () => {
       window.removeEventListener('mohit_sound_mute_toggle', handleMuteChange);
-      window.removeEventListener('mohit_toggle_low_effects', handleLowEffectsChange);
     };
-  }, []);
+  }, [musicSettings.volume, userAudioUrl]);
 
-  // Update target volume & mute state
-  useEffect(() => {
-    if (!audioRef.current) return;
-    const audio = audioRef.current;
-
-    if (!musicSettings.enabled || isMuted || isLowEffects || isLowData) {
-      audio.muted = true;
-      audio.pause();
-    } else {
-      audio.muted = false;
-      if (hasStartedPlaying && audio.paused) {
-        audio.play().catch(() => {});
-      }
-    }
-  }, [musicSettings.enabled, isMuted, isLowEffects, isLowData, hasStartedPlaying]);
-
-  // Handle first user gesture to unlock audio in mobile browsers
+  // Handle first user gesture anywhere on screen to automatically start background music
   useEffect(() => {
     if (hasStartedPlaying) return;
 
     const startAudioOnFirstTouch = () => {
-      if (!validAudioUrl) return;
+      sound.setMuted(false);
+      setIsMuted(false);
 
-      if (!audioRef.current) {
-        audioRef.current = new Audio(validAudioUrl);
-        audioRef.current.loop = musicSettings.loop !== false;
-      }
-
-      const audio = audioRef.current;
-      if (audio.src !== validAudioUrl) {
-        audio.src = validAudioUrl;
-      }
-      audio.loop = musicSettings.loop !== false;
-
-      // If muted or low effects/data, keep audio paused/muted
-      if (sound.getMuted() || !musicSettings.enabled || isLowEffects || isLowData) {
-        audio.muted = true;
+      if (!musicSettings.enabled) {
         setHasStartedPlaying(true);
         return;
       }
 
-      // Smooth Fade-in sequence
-      audio.volume = 0;
-      audio.muted = false;
-      const playPromise = audio.play();
+      const targetVol = Math.min(Math.max(musicSettings.volume || 0.35, 0.05), 1.0);
 
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setHasStartedPlaying(true);
-            const targetVolume = Math.min(Math.max(musicSettings.volume || 0.35, 0.05), 1.0);
-            const duration = (musicSettings.fadeInSeconds || 3) * 1000;
-            const steps = 30;
-            const stepInterval = duration / steps;
-            const volumeIncrement = targetVolume / steps;
-            let currentStep = 0;
+      // 1. If user provided a Cloudinary or direct MP3 audio URL
+      if (userAudioUrl) {
+        if (!audioRef.current) {
+          audioRef.current = new Audio(userAudioUrl);
+          audioRef.current.loop = musicSettings.loop !== false;
+        }
 
-            if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
-            fadeIntervalRef.current = window.setInterval(() => {
-              currentStep++;
-              if (audio) {
-                const nextVol = Math.min(currentStep * volumeIncrement, targetVolume);
-                audio.volume = nextVol;
-              }
-              if (currentStep >= steps) {
-                if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
-              }
-            }, stepInterval);
-          })
-          .catch((err) => {
-            console.warn('Audio autoplay interaction deferred:', err);
-          });
+        const audio = audioRef.current;
+        if (audio.src !== userAudioUrl) {
+          audio.src = userAudioUrl;
+        }
+        audio.loop = musicSettings.loop !== false;
+        audio.volume = 0;
+        audio.muted = false;
+
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setHasStartedPlaying(true);
+              ambientSynth.stop(); // Stop fallback synth when MP3 plays successfully
+
+              // Fade-in MP3
+              const duration = (musicSettings.fadeInSeconds || 2) * 1000;
+              const steps = 25;
+              const stepInterval = duration / steps;
+              const volumeIncrement = targetVol / steps;
+              let currentStep = 0;
+
+              if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+              fadeIntervalRef.current = window.setInterval(() => {
+                currentStep++;
+                if (audio) {
+                  audio.volume = Math.min(currentStep * volumeIncrement, targetVol);
+                }
+                if (currentStep >= steps) {
+                  if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+                }
+              }, stepInterval);
+            })
+            .catch((err) => {
+              console.warn('Custom MP3 playback deferred or blocked, fallback to ambient synth:', err);
+              // Fallback to ambient synth
+              ambientSynth.start(targetVol);
+              setHasStartedPlaying(true);
+            });
+        }
+
+        audio.onerror = () => {
+          console.warn('Audio URL encountered an error, activating ambient synth fallback.');
+          ambientSynth.start(targetVol);
+        };
+      } else {
+        // 2. No custom MP3 URL set yet: Start soothing procedural cyberpunk ambient synthesizer
+        ambientSynth.start(targetVol);
+        setHasStartedPlaying(true);
       }
     };
 
-    const events = ['pointerdown', 'touchstart', 'click', 'keydown'];
+    const events = ['pointerdown', 'touchstart', 'mousedown', 'click', 'keydown'];
     const handleGesture = () => {
       startAudioOnFirstTouch();
-      events.forEach((evt) => window.removeEventListener(evt, handleGesture));
+      events.forEach((evt) => window.removeEventListener(evt, handleGesture, true));
     };
 
-    events.forEach((evt) => window.addEventListener(evt, handleGesture, { passive: true }));
+    events.forEach((evt) => window.addEventListener(evt, handleGesture, true));
     return () => {
-      events.forEach((evt) => window.removeEventListener(evt, handleGesture));
+      events.forEach((evt) => window.removeEventListener(evt, handleGesture, true));
       if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
     };
-  }, [validAudioUrl, musicSettings.enabled, musicSettings.loop, musicSettings.volume, musicSettings.fadeInSeconds, hasStartedPlaying, isLowEffects, isLowData]);
+  }, [userAudioUrl, musicSettings.enabled, musicSettings.loop, musicSettings.volume, musicSettings.fadeInSeconds, hasStartedPlaying]);
 
-  // When audio URL changes from admin panel
+  // When audio URL is uploaded or changed from admin panel
   useEffect(() => {
-    if (!audioRef.current || !validAudioUrl) return;
-    if (audioRef.current.src !== validAudioUrl) {
-      audioRef.current.src = validAudioUrl;
-      if (hasStartedPlaying && !isMuted && musicSettings.enabled) {
-        audioRef.current.play().catch(() => {});
+    if (!userAudioUrl || !hasStartedPlaying) return;
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio(userAudioUrl);
+    }
+
+    const audio = audioRef.current;
+    if (audio.src !== userAudioUrl) {
+      audio.src = userAudioUrl;
+      audio.loop = musicSettings.loop !== false;
+      audio.volume = musicSettings.volume || 0.35;
+      audio.muted = isMuted;
+
+      if (!isMuted && musicSettings.enabled) {
+        audio
+          .play()
+          .then(() => {
+            ambientSynth.stop();
+          })
+          .catch(() => {
+            ambientSynth.start(musicSettings.volume || 0.35);
+          });
       }
     }
-  }, [validAudioUrl, hasStartedPlaying, isMuted, musicSettings.enabled]);
+  }, [userAudioUrl, hasStartedPlaying, isMuted, musicSettings.enabled, musicSettings.volume, musicSettings.loop]);
 
-  return null; // Silent background controller
+  return null; // Silent controller
 };

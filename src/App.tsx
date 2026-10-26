@@ -89,6 +89,22 @@ class FriendsErrorBoundary extends React.Component<
   }
 }
 
+// Helper to check if opening via direct friend profile share link
+const checkIsFriendsShareLink = () => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('friend') || params.get('friends') || params.get('universe')) {
+      return true;
+    }
+    const hash = window.location.hash || '';
+    if (hash.startsWith('#friend=') || hash === '#friends' || hash === '#universe') {
+      return true;
+    }
+  } catch {}
+  return false;
+};
+
 const MainPortfolio: React.FC = () => {
   const { mode } = useLanguage();
   const { siteSettings, mainProfileImage, heroOrbitImages } = useImages();
@@ -96,13 +112,31 @@ const MainPortfolio: React.FC = () => {
   // Modals state
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isFamilyVaultOpen, setIsFamilyVaultOpen] = useState(false);
-  const [isFriendsOpen, setIsFriendsOpen] = useState(false);
+  const [isFriendsOpen, setIsFriendsOpen] = useState(checkIsFriendsShareLink);
 
-  // Futuristic Boot Preloader: runs on initial visit for 1.6s to pre-render 3D assets and photos
+  // Futuristic Boot Preloader: runs on initial visit for 1.6s to pre-render 3D assets and photos,
+  // BUT skips immediately if opening a direct shared friend link so friend profile loads instantly!
   const [isBooting, setIsBooting] = useState(() => {
     if (typeof window === 'undefined') return false;
+    if (checkIsFriendsShareLink()) return false;
     return !sessionStorage.getItem('mohit_boot_completed');
   });
+
+  // Watch URL params for browser navigation or direct clicks
+  useEffect(() => {
+    const handleUrlCheck = () => {
+      if (checkIsFriendsShareLink()) {
+        setIsFriendsOpen(true);
+        setIsBooting(false);
+      }
+    };
+    window.addEventListener('popstate', handleUrlCheck);
+    window.addEventListener('hashchange', handleUrlCheck);
+    return () => {
+      window.removeEventListener('popstate', handleUrlCheck);
+      window.removeEventListener('hashchange', handleUrlCheck);
+    };
+  }, []);
 
   const handleBootComplete = () => {
     setIsBooting(false);
@@ -245,7 +279,21 @@ const MainPortfolio: React.FC = () => {
       />
       {/* Friends Universe 3D Modal (Lazy Loaded with Error Boundary) */}
       {isFriendsOpen && (
-        <FriendsErrorBoundary onClose={() => setIsFriendsOpen(false)}>
+        <FriendsErrorBoundary
+          onClose={() => {
+            setIsFriendsOpen(false);
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('friend');
+              url.searchParams.delete('friends');
+              url.searchParams.delete('universe');
+              if (url.hash.startsWith('#friend=') || url.hash === '#friends') {
+                url.hash = '';
+              }
+              window.history.replaceState({}, '', url.pathname + (url.search || '') + (url.hash || ''));
+            } catch {}
+          }}
+        >
           <React.Suspense
             fallback={
               <div className="fixed inset-0 z-50 bg-[#0A0D14] flex flex-col items-center justify-center text-[#00f2fe] font-mono text-sm gap-3">
@@ -256,7 +304,19 @@ const MainPortfolio: React.FC = () => {
           >
             <FriendsUniverse
               isOpen={isFriendsOpen}
-              onClose={() => setIsFriendsOpen(false)}
+              onClose={() => {
+                setIsFriendsOpen(false);
+                try {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('friend');
+                  url.searchParams.delete('friends');
+                  url.searchParams.delete('universe');
+                  if (url.hash.startsWith('#friend=') || url.hash === '#friends') {
+                    url.hash = '';
+                  }
+                  window.history.replaceState({}, '', url.pathname + (url.search || '') + (url.hash || ''));
+                } catch {}
+              }}
               isPortfolioLowEffects={typeof window !== 'undefined' && localStorage.getItem('mohit_low_effects') === 'true'}
             />
           </React.Suspense>

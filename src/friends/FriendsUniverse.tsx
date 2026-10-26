@@ -432,6 +432,14 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
         />
       )}
 
+      {/* Loading state when direct deep-linked friend profile is fetching */}
+      {activeProfileId && !activeFriend && (
+        <div className="fixed inset-0 z-50 bg-[#0A0D14]/90 backdrop-blur-md flex flex-col items-center justify-center text-[#00f2fe] font-mono text-sm gap-3">
+          <div className="w-10 h-10 rounded-full border-2 border-[#00f2fe] border-t-transparent animate-spin" />
+          <span>दोस्त का 3D प्रोफाइल लोड हो रहा है...</span>
+        </div>
+      )}
+
       {/* Reusable Full Profile Modal */}
       {activeProfileId && activeFriend && (
         <FullProfileModal

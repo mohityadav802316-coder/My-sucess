@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Friend, resolveImageUrl } from '../data/friends';
-import { Search } from 'lucide-react';
+import { Search, MessageCircle } from 'lucide-react';
 
 interface AllFriendsListProps {
   friends: Friend[];
@@ -74,16 +74,23 @@ export const AllFriendsList: React.FC<AllFriendsListProps> = ({
             const accent = friend.accent || (isSquadMember ? '#FFB53D' : '#00F2FE');
 
             return (
-              <button
+              <div
                 key={friend.id}
-                role="listitem"
+                role="button"
+                tabIndex={0}
                 onClick={() => onOpenProfile(friend.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onOpenProfile(friend.id);
+                  }
+                }}
                 className={`
                   row-press w-full flex items-center gap-3.5 p-3 rounded-2xl
                   bg-[#111726]/80 backdrop-blur-sm border border-[#1f2b46]
                   hover:border-[#00f2fe]/60 hover:bg-[#161f33]
                   transition-all duration-200 cursor-pointer text-left
-                  group relative overflow-hidden focus-visible:outline-2 focus-visible:outline-[#ffb53d]
+                  group relative overflow-hidden focus-visible:outline-2 focus-visible:outline-[#ffb53d] select-none
                 `}
               >
                 {/* Subtle glow hover bar on left with friend's accent color */}
@@ -156,11 +163,30 @@ export const AllFriendsList: React.FC<AllFriendsListProps> = ({
                   </div>
                 )}
 
+                {/* 1-Click WhatsApp Quick Action */}
+                {friend.whatsapp && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const digits = (friend.whatsapp || '').replace(/\D/g, '');
+                      if (!digits) return;
+                      const fullNum = digits.length === 10 ? `91${digits}` : digits;
+                      const msg = encodeURIComponent(`Hi ${friend.name}, saw your profile on Mohit's Friends Universe 3D!`);
+                      window.open(`https://wa.me/${fullNum}?text=${msg}`, '_blank');
+                    }}
+                    title={`${friend.name} को WhatsApp पर मैसेज भेजें`}
+                    className="p-2 rounded-full bg-[#25D366]/20 hover:bg-[#25D366] text-[#25D366] hover:text-slate-950 transition-all border border-[#25D366]/40 cursor-pointer shrink-0 z-10 active:scale-95"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                  </button>
+                )}
+
                 {/* Right arrow subtle chevron */}
                 <span className="text-[#8fa3bf] group-hover:text-[#00f2fe] text-sm pr-1 transition-transform group-hover:translate-x-0.5">
                   →
                 </span>
-              </button>
+              </div>
             );
           })}
         </div>

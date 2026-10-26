@@ -2,7 +2,20 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Friend, resolveImageUrl } from '../data/friends';
 import { HoloRing3D } from './HoloRing3D';
 import { useFriendsConfig } from '../data/repository';
-import { Share2, Check, ArrowLeft } from 'lucide-react';
+import { Share2, Check, ArrowLeft, MessageCircle } from 'lucide-react';
+
+const getCleanWhatsappUrl = (raw: string | null | undefined, friendName = '') => {
+  if (!raw || !raw.trim()) return null;
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('https://wa.me/') || trimmed.startsWith('http://wa.me/')) {
+    return trimmed;
+  }
+  const digits = trimmed.replace(/\D/g, '');
+  if (!digits) return null;
+  const fullNum = digits.length === 10 ? `91${digits}` : digits;
+  const msg = encodeURIComponent(`Hi ${friendName}, I saw your profile on Mohit Yadav's Friends Universe 3D!`);
+  return `https://wa.me/${fullNum}?text=${msg}`;
+};
 
 interface FullProfileModalProps {
   friend: Friend | null;
@@ -20,6 +33,10 @@ export const FullProfileModal: React.FC<FullProfileModalProps> = ({
   const [photoIndex, setPhotoIndex] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
   const { settings } = useFriendsConfig();
+
+  const whatsappUrl = useMemo(() => {
+    return getCleanWhatsappUrl(friend?.whatsapp, friend?.name);
+  }, [friend?.whatsapp, friend?.name]);
 
   // Filter distinct hero photos (up to 2) using resolveImageUrl
   const heroPhotos = useMemo(() => {
@@ -75,9 +92,10 @@ export const FullProfileModal: React.FC<FullProfileModalProps> = ({
 
   const handleShare = async () => {
     if (!friend) return;
-    const shareUrl = `${window.location.origin}${window.location.pathname}?friend=${friend.id}`;
-    const shareTitle = `${friend.name} - Friends Universe`;
-    const shareText = `Check out ${friend.name} on Friends Universe 3D!`;
+    const base = window.location.origin + window.location.pathname.replace(/\/+$/, '');
+    const shareUrl = `${base}/?friend=${encodeURIComponent(friend.id)}`;
+    const shareTitle = `${friend.name} - Friends Universe 3D`;
+    const shareText = `Check out ${friend.name} on Friends Universe 3D! 🔥`;
 
     if (navigator.share) {
       try {
@@ -243,6 +261,23 @@ export const FullProfileModal: React.FC<FullProfileModalProps> = ({
           <p className="text-sm text-[#8fa3bf] mt-0.5">
             {friend.username || friend.user || (friend.nickname ? `(${friend.nickname})` : '')}
           </p>
+
+          {/* WhatsApp Direct 1-Click Chat Button */}
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3.5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#25D366] to-[#128C7E] hover:from-[#20ba59] hover:to-[#0e7065] text-slate-950 font-black text-sm shadow-[0_0_20px_rgba(37,211,102,0.45)] hover:shadow-[0_0_30px_rgba(37,211,102,0.7)] transition-all active:scale-95 cursor-pointer min-h-[44px]"
+              aria-label={`Chat with ${friend.name} on WhatsApp`}
+            >
+              <MessageCircle className="w-5 h-5 fill-slate-950 text-slate-950" />
+              <span>WhatsApp Chat</span>
+              <span className="text-xs font-mono font-bold bg-slate-950/20 px-2 py-0.5 rounded-full text-slate-950">
+                Direct ↗
+              </span>
+            </a>
+          )}
         </div>
 
         {/* Section 1: Info Card (Only filled fields!) */}
@@ -270,10 +305,22 @@ export const FullProfileModal: React.FC<FullProfileModalProps> = ({
         <div className="bg-[#111726]/85 border border-[#1f2b46] rounded-2xl p-4 sm:p-5 my-3 shadow-lg">
           <h3 className="text-xs uppercase tracking-widest font-bold text-[#ffb53d] mb-3 flex items-center gap-1.5">
             <span>🔗</span>
-            <span>SOCIAL LINKS</span>
+            <span>SOCIAL & CONTACT LINKS</span>
           </h3>
-          {validLinks.length > 0 ? (
+          {validLinks.length > 0 || whatsappUrl ? (
             <div className="flex flex-wrap gap-2.5">
+              {whatsappUrl && (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm border border-[#25D366] bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#25D366] font-bold rounded-full px-4 py-2 transition-colors min-h-[44px]"
+                >
+                  <MessageCircle className="w-4 h-4 fill-[#25D366]" />
+                  <span>WhatsApp</span>
+                  <span className="text-xs">↗</span>
+                </a>
+              )}
               {validLinks.map((link, idx) => (
                 <a
                   key={idx}

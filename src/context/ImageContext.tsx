@@ -495,11 +495,30 @@ const ImageContext = createContext<ImageContextType>({
   updateSiteSettings: async () => {},
 });
 
+// Instant local cache helpers to avoid any visual delay on initial boot
+const getCachedPublishedImages = (): PortfolioImage[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('mohit_cached_images');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+};
+
+const getCachedSiteSettings = (): SiteSettings => {
+  if (typeof window === 'undefined') return defaultSiteSettings;
+  try {
+    const raw = localStorage.getItem('mohit_cached_settings');
+    if (raw) return { ...defaultSiteSettings, ...JSON.parse(raw) };
+  } catch {}
+  return defaultSiteSettings;
+};
+
 export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [publishedImages, setPublishedImages] = useState<PortfolioImage[]>([]);
-  const [allImages, setAllImages] = useState<PortfolioImage[]>([]);
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(defaultSiteSettings);
-  const [isLoading, setIsLoading] = useState(true);
+  const [publishedImages, setPublishedImages] = useState<PortfolioImage[]>(getCachedPublishedImages);
+  const [allImages, setAllImages] = useState<PortfolioImage[]>(getCachedPublishedImages);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(getCachedSiteSettings);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchPublishedImages = async () => {
     try {
@@ -729,22 +748,53 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const mainProfileImage =
-    publishedImages.find((img) => img.isMainProfile && img.section === 'profile') ||
-    publishedImages.find((img) => img.isMainProfile) ||
-    publishedImages.find((img) => img.section === 'profile') ||
-    publishedImages[0] ||
-    null;
+  // 1. Resolve Primary Profile Image
+  // Priority 1: Specifically selected via primaryPhotoId in siteSettings.hero
+  // Priority 2: Newest photo marked isMainProfile in profile section
+  // Priority 3: Newest photo marked isMainProfile
+  // Priority 4: Any published profile photo
+  // Priority 5: First published image
+  let mainProfileImage: PortfolioImage | null = null;
+  if (siteSettings.hero?.primaryPhotoId) {
+    mainProfileImage = publishedImages.find((img) => img.id === siteSettings.hero.primaryPhotoId) || null;
+  }
+  if (!mainProfileImage) {
+    mainProfileImage =
+      publishedImages.find((img) => img.isMainProfile && img.section === 'profile') ||
+      publishedImages.find((img) => img.isMainProfile) ||
+      publishedImages.find((img) => img.section === 'profile') ||
+      publishedImages[0] ||
+      null;
+  }
 
-  // Selected or automatic Hero Orbit images (4 to 5 distinct photographs)
-  const explicitOrbit = publishedImages.filter((img) => img.isHeroOrbit);
+  // Instant local sync for zero-delay boot
+  if (typeof window !== 'undefined' && mainProfileImage?.downloadUrl) {
+    try {
+      localStorage.setItem('mohit_profile_photo', mainProfileImage.downloadUrl);
+    } catch {}
+  }
+
+  // 2. Resolve 3D Hero Orbit Images
+  // Priority 1: Specifically selected in siteSettings.hero.orbitImageIds
+  // Priority 2: Any images marked isHeroOrbit
+  // Priority 3: All published images
   let heroOrbitImages: PortfolioImage[] = [];
-  if (explicitOrbit.length >= 2) {
-    heroOrbitImages = explicitOrbit.slice(0, 5);
-  } else if (publishedImages.length >= 2) {
-    heroOrbitImages = publishedImages.slice(0, 5);
-  } else if (publishedImages.length === 1) {
-    heroOrbitImages = [publishedImages[0]];
+  const configuredOrbitIds = siteSettings.hero?.orbitImageIds || [];
+  if (configuredOrbitIds.length > 0) {
+    const fromConfig = configuredOrbitIds
+      .map((id) => publishedImages.find((img) => img.id === id))
+      .filter((img): img is PortfolioImage => Boolean(img));
+    if (fromConfig.length > 0) {
+      heroOrbitImages = fromConfig;
+    }
+  }
+  if (heroOrbitImages.length === 0) {
+    const explicitOrbit = publishedImages.filter((img) => img.isHeroOrbit);
+    if (explicitOrbit.length > 0) {
+      heroOrbitImages = explicitOrbit.slice(0, 6);
+    } else {
+      heroOrbitImages = publishedImages.slice(0, 6);
+    }
   }
 
   const galleryImages = publishedImages.filter((img) => img.section === 'gallery');

@@ -167,7 +167,7 @@ export const AdminCloudinaryUpload: React.FC = () => {
         storageProvider,
         section: targetSection === 'profile' ? 'profile' : targetSection === 'hero' ? 'hero' : targetSection,
         category: targetCategory,
-        displayOrder: allImages.length + 1,
+        displayOrder: targetSection === 'profile' ? 0 : allImages.length + 1,
         isPublished: true,
         isMainProfile: targetSection === 'profile',
         isHeroOrbit: addToOrbit || targetSection === 'hero',
@@ -190,13 +190,18 @@ export const AdminCloudinaryUpload: React.FC = () => {
           await updateSiteSettings({
             hero: {
               ...siteSettings.hero,
-              orbitImageIds: [...currentOrbits, imgId],
+              orbitImageIds: [imgId, ...currentOrbits].slice(0, 6),
             },
           });
         }
       }
 
       if (targetSection === 'profile') {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('mohit_profile_photo', secureUrl);
+          } catch {}
+        }
         await updateSiteSettings({
           hero: {
             ...siteSettings.hero,

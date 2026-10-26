@@ -478,32 +478,74 @@ export const FloatingPhoneHero3D: React.FC<FloatingPhoneHero3DProps> = ({
       { name: 'CONTACT', color: 0x10b981, pos: [2.4, -1.8, 0.8], iconType: 'contact' },
     ];
 
-    const createSatelliteTexture = (name: string, colorHex: string): THREE.CanvasTexture => {
+    const createSatelliteTexture = (
+      name: string,
+      colorHex: string,
+      photoUrl?: string
+    ): THREE.CanvasTexture => {
       const c = document.createElement('canvas');
-      c.width = 256;
-      c.height = 256;
+      c.width = 512;
+      c.height = 512;
       const ctx = c.getContext('2d')!;
 
       // Glowing circular disc
-      const grad = ctx.createRadialGradient(128, 128, 40, 128, 128, 128);
+      const grad = ctx.createRadialGradient(256, 256, 80, 256, 256, 256);
       grad.addColorStop(0, '#0a0f1d');
       grad.addColorStop(0.85, '#030712');
       grad.addColorStop(1, colorHex);
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(128, 128, 120, 0, Math.PI * 2);
+      ctx.arc(256, 256, 240, 0, Math.PI * 2);
       ctx.fill();
 
       // Outer metallic neon ring
-      ctx.lineWidth = 10;
+      ctx.lineWidth = 14;
       ctx.strokeStyle = colorHex;
       ctx.stroke();
 
-      // Label
-      ctx.font = 'bold 28px Orbitron, sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.fillText(name, 128, 140);
+      if (photoUrl && photoUrl.trim() !== '') {
+        const cleanPhoto = photoUrl.trim();
+        const img = new Image();
+        if (cleanPhoto.startsWith('http')) img.crossOrigin = 'anonymous';
+        img.src = cleanPhoto;
+        img.onload = () => {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(256, 256, 224, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(img, 32, 32, 448, 448);
+          ctx.restore();
+
+          // Border ring around photo
+          ctx.beginPath();
+          ctx.arc(256, 256, 224, 0, Math.PI * 2);
+          ctx.lineWidth = 14;
+          ctx.strokeStyle = colorHex;
+          ctx.stroke();
+
+          // Subtle title pill at bottom
+          ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
+          ctx.beginPath();
+          ctx.roundRect(64, 400, 384, 80, 20);
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = colorHex;
+          ctx.stroke();
+
+          ctx.font = 'bold 32px Orbitron, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText(name.slice(0, 16).toUpperCase(), 256, 452);
+
+          t.needsUpdate = true;
+        };
+      } else {
+        // Label
+        ctx.font = 'bold 36px Orbitron, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText(name, 256, 270);
+      }
 
       const t = new THREE.CanvasTexture(c);
       t.colorSpace = THREE.SRGBColorSpace;
@@ -511,10 +553,12 @@ export const FloatingPhoneHero3D: React.FC<FloatingPhoneHero3DProps> = ({
     };
 
     const satMeshes: THREE.Mesh[] = [];
-    satellites.forEach((sat) => {
+    satellites.forEach((sat, sIdx) => {
       const satGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.08, 32);
       const hexStr = `#${sat.color.toString(16).padStart(6, '0')}`;
-      const satTex = createSatelliteTexture(sat.name, hexStr);
+      const orbitPhoto = orbitImages[sIdx];
+      const satName = orbitPhoto?.title || orbitPhoto?.caption || sat.name;
+      const satTex = createSatelliteTexture(satName, hexStr, orbitPhoto?.downloadUrl);
       const satMat = new THREE.MeshStandardMaterial({
         color: 0x0f172a,
         metalness: 0.9,
@@ -719,6 +763,7 @@ export const FloatingPhoneHero3D: React.FC<FloatingPhoneHero3DProps> = ({
   }, [
     centralImage?.id,
     centralImage?.downloadUrl,
+    orbitImages.map((o) => `${o.id}_${o.downloadUrl}`).join('|'),
     customName,
     customSubtitle,
     customHeaderTag,

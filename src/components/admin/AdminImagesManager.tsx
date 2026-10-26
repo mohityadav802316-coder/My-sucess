@@ -312,6 +312,12 @@ export const AdminImagesManager: React.FC = () => {
 
   const handleSetPrimary = async (imgId: string) => {
     sound.playClick();
+    const targetImg = allImages.find((img) => img.id === imgId);
+    if (typeof window !== 'undefined' && targetImg?.downloadUrl) {
+      try {
+        localStorage.setItem('mohit_profile_photo', targetImg.downloadUrl);
+      } catch {}
+    }
     try {
       await updateSiteSettings({
         hero: {
@@ -319,8 +325,9 @@ export const AdminImagesManager: React.FC = () => {
           primaryPhotoId: imgId,
         },
       });
+      await setDoc(doc(db, 'images', imgId), { isMainProfile: true }, { merge: true });
       sound.playSuccess();
-      setStatusMessage({ type: 'success', text: 'Primary Hero portrait updated!' });
+      setStatusMessage({ type: 'success', text: 'Primary Hero portrait updated immediately!' });
     } catch (err: any) {
       sound.playAlert();
     }

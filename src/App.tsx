@@ -14,6 +14,7 @@ import { CinematicCanvas3D } from './components/three/CinematicCanvas3D';
 import { MysticTouchSparks } from './components/vfx/MysticTouchSparks';
 import { BackgroundMusic } from './components/audio/BackgroundMusic';
 import { IntroScreen } from './components/vfx/IntroScreen';
+import { CyberBootPreloader } from './components/vfx/CyberBootPreloader';
 import { CinematicScrollHUD } from './components/CinematicScrollHUD';
 import { CyberNavbar } from './components/CyberNavbar';
 
@@ -34,6 +35,7 @@ import { Footer } from './components/sections/Footer';
 // Modals & Interactive Floating Widgets
 import { FamilyVaultModal } from './components/family/FamilyVaultModal';
 import { AdminModal } from './components/admin/AdminModal';
+import { Floating3DFireFriendsButton } from './components/vfx/Floating3DFireFriendsButton';
 import { GlobalPortfolioErrorBoundary } from './components/vfx/GlobalPortfolioErrorBoundary';
 
 // Lazy-loaded Friends Universe (loaded strictly on button tap to protect portfolio speed)
@@ -89,12 +91,25 @@ class FriendsErrorBoundary extends React.Component<
 
 const MainPortfolio: React.FC = () => {
   const { mode } = useLanguage();
-  const { siteSettings } = useImages();
+  const { siteSettings, mainProfileImage, heroOrbitImages } = useImages();
 
   // Modals state
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isFamilyVaultOpen, setIsFamilyVaultOpen] = useState(false);
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
+
+  // Futuristic Boot Preloader: runs on initial visit for 1.6s to pre-render 3D assets and photos
+  const [isBooting, setIsBooting] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !sessionStorage.getItem('mohit_boot_completed');
+  });
+
+  const handleBootComplete = () => {
+    setIsBooting(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('mohit_boot_completed', 'true');
+    }
+  };
 
   // Intro Screen state: false by default so portfolio is instantly visible
   const [showIntro, setShowIntro] = useState(false);
@@ -121,6 +136,15 @@ const MainPortfolio: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 relative overflow-x-hidden">
+      {/* High-Tech Cyber Boot Preloader (1.6s) to ensure instant zero-delay visual display */}
+      {isBooting && (
+        <CyberBootPreloader
+          onComplete={handleBootComplete}
+          primaryPhotoUrl={mainProfileImage?.downloadUrl}
+          orbitPhotoUrls={heroOrbitImages.map((img) => img.downloadUrl)}
+        />
+      )}
+
       {/* Cinematic Multiverse Canvas & Particle Backgrounds */}
       <CyberBackground />
       <CinematicCanvas3D isPaused={isFriendsOpen} />
@@ -209,6 +233,15 @@ const MainPortfolio: React.FC = () => {
       <AdminModal
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
+      />
+
+      {/* 3D Fiery Floating Friends Button (Bottom Screen Magnet) */}
+      <Floating3DFireFriendsButton
+        isVisible={!isFriendsOpen && !isBooting}
+        onClick={() => {
+          sound.playWarp();
+          setIsFriendsOpen(true);
+        }}
       />
       {/* Friends Universe 3D Modal (Lazy Loaded with Error Boundary) */}
       {isFriendsOpen && (

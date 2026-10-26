@@ -1,12 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
 import { FloatingPhoneHero3D } from '../three/FloatingPhoneHero3D';
+import { PhotoOrbitHero3D } from '../three/PhotoOrbitHero3D';
 import { MysticTextReveal } from '../vfx/MysticTextReveal';
 import { BlackMagicSmoke } from '../vfx/BlackMagicSmoke';
-import { ArrowRight, Mail, Sparkles } from 'lucide-react';
+import { ArrowRight, Mail, Sparkles, Smartphone, Compass } from 'lucide-react';
 
 interface HeroSectionProps {
   isPaused?: boolean;
@@ -15,6 +16,7 @@ interface HeroSectionProps {
 export const HeroSection: React.FC<HeroSectionProps> = ({ isPaused = false }) => {
   const { mode } = useLanguage();
   const { mainProfileImage, heroOrbitImages, siteSettings } = useImages();
+  const [view3DMode, setView3DMode] = useState<'phone' | 'orbit'>('phone');
 
   const localPhoto = typeof window !== 'undefined' ? localStorage.getItem('mohit_profile_photo') : null;
   const activeCentralPhoto = useMemo(() => {
@@ -141,19 +143,63 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ isPaused = false }) =>
           </div>
         </motion.div>
 
-        {/* Right Column: Floating 3D Smartphone */}
+        {/* Right Column: Floating 3D Showcase (Phone or Orbit Matrix) */}
         <motion.div
           initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.0, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="lg:col-span-6 relative flex flex-col items-center order-1 lg:order-2 w-full"
         >
-          <FloatingPhoneHero3D
-            centralImage={activeCentralPhoto}
-            orbitImages={heroOrbitImages}
-            onExplore={() => scrollToSection('about')}
-            isPaused={isPaused}
-          />
+          {/* Futuristic 3D View Mode Switcher */}
+          <div className="flex items-center gap-1.5 p-1 rounded-full bg-slate-900/90 border border-cyan-500/30 mb-2 z-20 backdrop-blur-md shadow-lg shadow-cyan-950/40">
+            <button
+              type="button"
+              onClick={() => {
+                sound.playClick();
+                setView3DMode('phone');
+              }}
+              className={`px-3.5 py-1.5 rounded-full text-[11px] font-mono transition-all cursor-pointer flex items-center gap-1.5 ${
+                view3DMode === 'phone'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold shadow-md shadow-cyan-500/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>3D Phone View</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                sound.playClick();
+                setView3DMode('orbit');
+              }}
+              className={`px-3.5 py-1.5 rounded-full text-[11px] font-mono transition-all cursor-pointer flex items-center gap-1.5 ${
+                view3DMode === 'orbit'
+                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>3D Photo Orbit ({heroOrbitImages.length})</span>
+            </button>
+          </div>
+
+          {view3DMode === 'phone' ? (
+            <FloatingPhoneHero3D
+              centralImage={activeCentralPhoto}
+              orbitImages={heroOrbitImages}
+              onExplore={() => scrollToSection('about')}
+              isPaused={isPaused}
+            />
+          ) : (
+            <div className="w-full relative">
+              <PhotoOrbitHero3D
+                centralImage={activeCentralPhoto}
+                orbitImages={heroOrbitImages}
+                cycleInterval={siteSettings.hero?.orbitCycleInterval || 3}
+              />
+            </div>
+          )}
         </motion.div>
       </div>
     </section>

@@ -84,6 +84,21 @@ export const CyberBootPreloader: React.FC<CyberBootPreloaderProps> = ({
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 1.04 }}
           transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+          onTouchStartCapture={() => {
+            (window as any).__startBackgroundMusic?.();
+          }}
+          onTouchEndCapture={() => {
+            (window as any).__startBackgroundMusic?.();
+          }}
+          onPointerDownCapture={() => {
+            (window as any).__startBackgroundMusic?.();
+          }}
+          onPointerUpCapture={() => {
+            (window as any).__startBackgroundMusic?.();
+          }}
+          onClickCapture={() => {
+            (window as any).__startBackgroundMusic?.();
+          }}
           className="fixed inset-0 z-[9999] bg-[#030712] flex flex-col items-center justify-center p-6 select-none overflow-hidden"
         >
           {/* Ambient Cyber Grid & Glow */}

@@ -11,7 +11,11 @@ import {
   Target,
   User,
   Sparkles,
-  BookOpen
+  BookOpen,
+  Eye,
+  EyeOff,
+  Layers,
+  Heart
 } from 'lucide-react';
 
 export const AdminContentManager: React.FC = () => {
@@ -19,7 +23,7 @@ export const AdminContentManager: React.FC = () => {
   const profile = siteSettings.profile;
   const sectionTexts = siteSettings.sectionTexts || {};
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'sections'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'sections' | 'visibility'>('profile');
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -35,6 +39,9 @@ export const AdminContentManager: React.FC = () => {
     academicBoard: profile?.academicBoard || 'Bihar School Examination Board (BSEB)',
     targetRole: profile?.targetRole || 'AI Engineer & Full-Stack Systems Architect',
     targetRoleHi: profile?.targetRoleHi || 'AI इंजीनियर एवं फुल-स्टैक सिस्टम आर्किटेक्ट',
+    showHobby: profile?.showHobby !== false,
+    hobbyEn: profile?.hobbyEn || 'AI Developer & Spatial 3D Systems',
+    hobbyHi: profile?.hobbyHi || 'AI डेवलपर एवं 3D विजुअल्स',
     careerGoalsEn: profile?.careerGoalsEn || [
       'Master advanced deep learning & agentic LLM systems',
       'Architect production-grade defensive cybersecurity software',
@@ -45,6 +52,21 @@ export const AdminContentManager: React.FC = () => {
       'मजबूत और सुरक्षित साइबर सुरक्षा सॉफ्टवेयर तैयार करना',
       'भारत और विश्व के लिए तकनीकी प्लेटफॉर्म्स का निर्माण करना'
     ]
+  });
+
+  // Scene Visibility Form
+  const [sceneStates, setSceneStates] = useState({
+    hero: siteSettings.scenes?.activeScenes?.hero !== false,
+    about: siteSettings.scenes?.activeScenes?.about !== false,
+    techConsole: siteSettings.scenes?.activeScenes?.techConsole !== false,
+    cybersecurity: siteSettings.scenes?.activeScenes?.cybersecurity !== false,
+    skills: siteSettings.scenes?.activeScenes?.skills !== false,
+    roadmap: siteSettings.scenes?.activeScenes?.roadmap !== false,
+    projects: siteSettings.scenes?.activeScenes?.projects !== false,
+    gallery: siteSettings.scenes?.activeScenes?.gallery !== false,
+    guestbook: siteSettings.scenes?.activeScenes?.guestbook !== false,
+    vision: siteSettings.scenes?.activeScenes?.vision !== false,
+    contact: siteSettings.scenes?.activeScenes?.contact !== false,
   });
 
   // Section Copy Form
@@ -101,7 +123,10 @@ export const AdminContentManager: React.FC = () => {
           'उन्नत डीप लर्निंग और AI सिस्टम्स में महारत हासिल करना',
           'मजबूत और सुरक्षित साइबर सुरक्षा सॉफ्टवेयर तैयार करना',
           'भारत और विश्व के लिए तकनीकी प्लेटफॉर्म्स का निर्माण करना'
-        ]
+        ],
+        showHobby: siteSettings.profile.showHobby !== false,
+        hobbyEn: siteSettings.profile.hobbyEn || 'AI Developer & Spatial 3D Systems',
+        hobbyHi: siteSettings.profile.hobbyHi || 'AI डेवलपर एवं 3D विजुअल्स',
       });
     }
     if (siteSettings.sectionTexts) {
@@ -110,7 +135,13 @@ export const AdminContentManager: React.FC = () => {
         ...siteSettings.sectionTexts,
       }));
     }
-  }, [siteSettings.profile, siteSettings.sectionTexts]);
+    if (siteSettings.scenes?.activeScenes) {
+      setSceneStates((prev) => ({
+        ...prev,
+        ...siteSettings.scenes.activeScenes,
+      }));
+    }
+  }, [siteSettings.profile, siteSettings.sectionTexts, siteSettings.scenes]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +181,29 @@ export const AdminContentManager: React.FC = () => {
     }
   };
 
+  const handleSaveVisibility = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setStatusMessage(null);
+    try {
+      await updateSiteSettings({
+        scenes: {
+          ...siteSettings.scenes,
+          activeScenes: sceneStates,
+        },
+        activeScenes: sceneStates,
+      });
+      sound.playSuccess();
+      setStatusMessage({ type: 'success', text: 'Section visibility settings saved and published!' });
+    } catch (err: any) {
+      sound.playAlert();
+      setStatusMessage({ type: 'error', text: `Save error: ${err.message}` });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setStatusMessage(null), 3500);
+    }
+  };
+
   return (
     <div className="space-y-6 text-left">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900/80 border border-amber-500/20">
@@ -159,11 +213,11 @@ export const AdminContentManager: React.FC = () => {
             Content, Academic Bio & Section Texts
           </h2>
           <p className="text-xs font-mono text-slate-400 mt-1">
-            Manage personal biography, Class 12 board credentials, target roles, and bilingual section headings.
+            Manage personal biography, Class 12 board credentials, section visibility, and bilingual copy.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setActiveTab('profile')}
             className={`px-3 py-1.5 rounded-xl font-mono text-xs cursor-pointer transition ${
@@ -172,7 +226,7 @@ export const AdminContentManager: React.FC = () => {
                 : 'bg-slate-800 text-slate-300 hover:text-white'
             }`}
           >
-            Profile & Academics
+            Profile &amp; Academics
           </button>
           <button
             onClick={() => setActiveTab('sections')}
@@ -183,6 +237,17 @@ export const AdminContentManager: React.FC = () => {
             }`}
           >
             Section Titles (EN / HI)
+          </button>
+          <button
+            onClick={() => setActiveTab('visibility')}
+            className={`px-3 py-1.5 rounded-xl font-mono text-xs cursor-pointer transition flex items-center gap-1.5 ${
+              activeTab === 'visibility'
+                ? 'bg-amber-500 text-slate-950 font-bold'
+                : 'bg-slate-800 text-slate-300 hover:text-white'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Section Visibility (दृश्यता)</span>
           </button>
         </div>
       </div>
@@ -319,6 +384,58 @@ export const AdminContentManager: React.FC = () => {
                 onChange={(e) => setProfileData({ ...profileData, bioHi: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:border-amber-400"
               />
+            </div>
+
+            {/* My Hobby / मेरी हॉबी Controls */}
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-rose-400" />
+                  <span className="text-xs font-cyber font-bold text-white uppercase tracking-wider">
+                    My Hobby / मेरी हॉबी
+                  </span>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={profileData.showHobby !== false}
+                    onChange={(e) => setProfileData({ ...profileData, showHobby: e.target.checked })}
+                    className="accent-amber-500 rounded w-4 h-4"
+                  />
+                  <span className="text-xs font-mono text-amber-300">
+                    {profileData.showHobby !== false ? 'हॉबी ऑन (Visible)' : 'हॉबी ऑफ (Hidden)'}
+                  </span>
+                </label>
+              </div>
+
+              {profileData.showHobby !== false && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
+                      Hobby (English)
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.hobbyEn || ''}
+                      onChange={(e) => setProfileData({ ...profileData, hobbyEn: e.target.value })}
+                      placeholder="e.g. AI Developer & Spatial 3D Systems"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
+                      Hobby (Hindi)
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.hobbyHi || ''}
+                      onChange={(e) => setProfileData({ ...profileData, hobbyHi: e.target.value })}
+                      placeholder="e.g. AI डेवलपर एवं 3D विजुअल्स"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -460,6 +577,87 @@ export const AdminContentManager: React.FC = () => {
           >
             <Save className="w-4 h-4" />
             {isSaving ? 'Saving...' : 'Save Section Headings'}
+          </button>
+        </form>
+      )}
+
+      {/* TAB 3: SECTION VISIBILITY (दृश्यता / SHOW-HIDE) */}
+      {activeTab === 'visibility' && (
+        <form onSubmit={handleSaveVisibility} className="space-y-6 max-w-3xl">
+          <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h3 className="font-cyber font-bold text-base text-white flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-cyan-400" />
+                  वेबसाइट सेक्शन दृश्यता (Show / Hide Any Section)
+                </h3>
+                <p className="text-xs font-mono text-slate-400 mt-1">
+                  प्रत्येक सेक्शन को जरूरत अनुसार ऑन (Visible) या ऑफ (Hidden) करें। सेव करने पर यह वेबसाइट पर लाइव लागू हो जाता है।
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              {[
+                { id: 'hero', name: 'Hero Scene (3D बैनर व फोन)', icon: '🌟' },
+                { id: 'about', name: 'About & Academic Bio (परिचय)', icon: '🎓' },
+                { id: 'techConsole', name: 'Universal Tech Console (टेक कंसोल)', icon: '💻' },
+                { id: 'cybersecurity', name: 'Cyber Security Shield (साइबर रक्षा)', icon: '🛡️' },
+                { id: 'skills', name: 'Skills & 3D Meters (कौशल व मीटर)', icon: '⚡' },
+                { id: 'roadmap', name: 'Roadmap & Journey (सफरनामा)', icon: '🗺️' },
+                { id: 'projects', name: 'Projects Lab (प्रोजेक्ट्स)', icon: '🚀' },
+                { id: 'gallery', name: '3D Photo Gallery (फोटो गैलरी)', icon: '🖼️' },
+                { id: 'guestbook', name: 'Guestbook & Wishes (संदेश पुस्तिका)', icon: '📝' },
+                { id: 'vision', name: 'Guiding Vision (भविष्य दृष्टिकोण)', icon: '👁️' },
+                { id: 'contact', name: 'Contact Form & Links (संपर्क)', icon: '📬' },
+              ].map((item) => {
+                const isVisible = (sceneStates as any)[item.id] !== false;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      sound.playClick();
+                      setSceneStates((prev) => ({
+                        ...prev,
+                        [item.id]: !isVisible,
+                      }));
+                    }}
+                    className={`p-3.5 rounded-xl border flex items-center justify-between transition cursor-pointer select-none ${
+                      isVisible
+                        ? 'bg-slate-800/80 border-cyan-500/50 text-white shadow-md shadow-cyan-950/30'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-base">{item.icon}</span>
+                      <span className="text-xs font-mono font-medium">{item.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {isVisible ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-md border border-cyan-500/30">
+                          <Eye className="w-3 h-3" />
+                          Visible
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono text-slate-500 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                          <EyeOff className="w-3 h-3" />
+                          Hidden
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-cyber font-bold text-xs uppercase cursor-pointer disabled:opacity-50 shadow-lg shadow-cyan-500/20"
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? 'सेव हो रहा है...' : 'विजिबिलिटी सेटिंग्स सेव व पब्लिश करें'}
           </button>
         </form>
       )}

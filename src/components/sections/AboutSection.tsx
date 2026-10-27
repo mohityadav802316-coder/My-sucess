@@ -5,11 +5,11 @@ import { useImages } from '../../context/ImageContext';
 import { MysticTextReveal } from '../vfx/MysticTextReveal';
 import { MysticTiltCard } from '../vfx/MysticTiltCard';
 import { BlackMagicSmoke } from '../vfx/BlackMagicSmoke';
-import { GraduationCap, Target, Camera, Sparkles, Brain, Cpu, Globe, Binary, Shield, Compass } from 'lucide-react';
+import { GraduationCap, Target, Camera, Sparkles, Brain, Cpu, Globe, Binary, Shield, Compass, Heart } from 'lucide-react';
 
 export const AboutSection: React.FC = () => {
   const { mode } = useLanguage();
-  const { mainProfileImage } = useImages();
+  const { mainProfileImage, siteSettings } = useImages();
 
   const localPhotoUrl =
     typeof window !== 'undefined' ? (localStorage.getItem('mohit_profile_photo')?.trim() || null) : null;
@@ -200,6 +200,30 @@ export const AboutSection: React.FC = () => {
                 </p>
               </div>
             </MysticTiltCard>
+
+            {/* Configurable My Hobby / मेरी हॉबी Badge (Toggleable from Admin) */}
+            {siteSettings.profile?.showHobby !== false && (
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-900/90 border border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                    <Heart className="w-4 h-4 text-rose-400" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-rose-400 font-bold block">
+                      {mode === 'hi' ? 'मेरी हॉबी' : 'MY HOBBY'}
+                    </span>
+                    <span className="text-xs sm:text-sm font-cyber font-bold text-white block">
+                      {mode === 'hi'
+                        ? (siteSettings.profile?.hobbyHi || 'AI डेवलपर एवं 3D विजुअल्स')
+                        : (siteSettings.profile?.hobbyEn || 'AI Developer & Spatial 3D Systems')}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-rose-300/80 bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-500/20">
+                  {mode === 'hi' ? 'सक्रिय पैशन' : 'Active Passion'}
+                </span>
+              </div>
+            )}
 
             {/* 6 Glowing Mystic Badges for Technical Domains */}
             <div className="space-y-2.5 pt-1">

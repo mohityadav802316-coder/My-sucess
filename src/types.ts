@@ -116,6 +116,9 @@ export interface ProfileSettings {
   targetRoleHi: string;
   careerGoalsEn: string[];
   careerGoalsHi: string[];
+  showHobby?: boolean;
+  hobbyEn?: string;
+  hobbyHi?: string;
 }
 
 export interface HeroSettings {

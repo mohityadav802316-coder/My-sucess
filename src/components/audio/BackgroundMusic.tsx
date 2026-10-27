@@ -147,19 +147,20 @@ function resolveAudioUrl(url: string | undefined): string {
   return CLOUDINARY_PRIMARY_AUDIO;
 }
 
-// Helper to retrieve or lazily create the single shared HTMLAudioElement
 function getSharedAudio(initialUrl?: string): HTMLAudioElement | null {
   if (typeof window === 'undefined') return null;
   if (!globalAudioInstance) {
     const audio = new Audio();
     audio.preload = 'auto';
     audio.loop = true;
-    audio.crossOrigin = 'anonymous';
     audio.setAttribute('playsinline', 'true');
     (audio as any).playsInline = true;
 
     const url = initialUrl || CLOUDINARY_PRIMARY_AUDIO;
     audio.src = url;
+    try {
+      audio.load();
+    } catch {}
 
     // Seamless loop across all desktop and mobile browsers
     audio.addEventListener('ended', () => {
@@ -265,7 +266,7 @@ export const BackgroundMusic: React.FC = () => {
       audio.volume = targetVolumeRef.current;
     } catch {}
 
-    // If audio is already playing the desired track, preserve position and avoid restarting
+    // If audio is already playing smoothly, preserve position and avoid restarting
     if (!audio.paused && audio.currentTime > 0 && audio.src && audio.src.includes(urlToPlay)) {
       globalIsPlaying = true;
       globalPlaybackStarted = true;
@@ -277,17 +278,15 @@ export const BackgroundMusic: React.FC = () => {
     // Set source if not matching
     if (!audio.src || !audio.src.includes(urlToPlay)) {
       audio.src = urlToPlay;
-    }
-
-    // If play promise is already in progress, avoid double invoking to prevent browser AbortError
-    if (activePlayPromise) {
-      return activePlayPromise.then(() => true).catch(() => false);
+      try {
+        audio.load();
+      } catch {}
     }
 
     // Set error listener for automatic fallback
     audio.onerror = () => {
       const mediaError = audio.error;
-      console.warn('[BackgroundMusic] Audio file error on URL:', urlToPlay, mediaError?.code, mediaError?.message);
+      console.warn('[BackgroundMusic] Audio file notice on URL:', urlToPlay, mediaError?.code, mediaError?.message);
       if (urlToPlay !== '/audio/ambient-cyberpunk.mp3') {
         attemptPlayback('/audio/ambient-cyberpunk.mp3');
       } else {
@@ -313,18 +312,18 @@ export const BackgroundMusic: React.FC = () => {
           .catch((err: any) => {
             activePlayPromise = null;
             if (err?.name === 'NotAllowedError') {
-              console.warn('[BackgroundMusic] Autoplay policy waiting for user touch gesture.');
+              // Expected if browser autoplay policy demands user gesture
             } else if (err?.name === 'AbortError') {
-              console.log('[BackgroundMusic] Play request debounced.');
+              // Interrupted by next touch/interaction
             } else {
-              console.warn('[BackgroundMusic] Playback exception:', err?.name, err?.message);
+              console.warn('[BackgroundMusic] Playback notice:', err?.name, err?.message);
             }
             return false;
           });
       }
     } catch (err: any) {
       activePlayPromise = null;
-      console.warn('[BackgroundMusic] Play invocation error:', err?.message || err);
+      console.warn('[BackgroundMusic] Play invocation notice:', err?.message || err);
     }
     return Promise.resolve(false);
   }, []);
@@ -339,7 +338,14 @@ export const BackgroundMusic: React.FC = () => {
     };
   }, [attemptPlayback]);
 
-  // Attach touch/scroll/click listeners for the FIRST genuine user interaction anywhere
+  // 1. Direct Autoplay Attempt on Initial Site Load
+  useEffect(() => {
+    if (isMusicEnabled) {
+      attemptPlayback().catch(() => {});
+    }
+  }, [isMusicEnabled, attemptPlayback]);
+
+  // 2. Attach touch/scroll/pointer/click listeners for FIRST genuine screen touch anywhere
   useEffect(() => {
     if (!isMusicEnabled) {
       if (globalAudioInstance && !globalAudioInstance.paused) {
@@ -351,7 +357,6 @@ export const BackgroundMusic: React.FC = () => {
       return;
     }
 
-    // Pre-initialize shared audio with current active URL so it is immediately ready
     const audio = getSharedAudio(activeUrlRef.current);
     if (audio && !audio.paused && audio.currentTime > 0) {
       setIsPlaying(true);
@@ -359,14 +364,27 @@ export const BackgroundMusic: React.FC = () => {
     }
 
     let isListenerActive = true;
-    // Listen for mobile screen touch (touchstart, touchend, touchmove), scrolling, pointerdown, click, and keys
-    const userEvents = ['touchstart', 'touchend', 'touchmove', 'pointerdown', 'mousedown', 'click', 'scroll', 'keydown'];
+    const userEvents = [
+      'touchstart',
+      'touchend',
+      'pointerdown',
+      'pointerup',
+      'mousedown',
+      'mouseup',
+      'click',
+      'wheel',
+      'scroll',
+      'keydown'
+    ];
 
     const removeAllListeners = () => {
       isListenerActive = false;
       userEvents.forEach((evt) => {
         window.removeEventListener(evt, handleUserInteraction, true);
         document.removeEventListener(evt, handleUserInteraction, true);
+        if (document.documentElement) {
+          document.documentElement.removeEventListener(evt, handleUserInteraction, true);
+        }
         if (document.body) {
           document.body.removeEventListener(evt, handleUserInteraction, true);
         }
@@ -376,7 +394,6 @@ export const BackgroundMusic: React.FC = () => {
     const handleUserInteraction = () => {
       if (!isListenerActive) return;
 
-      // Attempt playback directly inside the synchronous user gesture stack
       attemptPlayback().then((started) => {
         if (started && isListenerActive) {
           removeAllListeners();
@@ -384,15 +401,30 @@ export const BackgroundMusic: React.FC = () => {
       });
     };
 
+    // When audio successfully starts playing, remove gesture listeners
+    const onPlaying = () => {
+      removeAllListeners();
+    };
+
+    if (audio) {
+      audio.addEventListener('playing', onPlaying, { once: true });
+    }
+
     userEvents.forEach((evt) => {
       window.addEventListener(evt, handleUserInteraction, { capture: true, passive: true });
       document.addEventListener(evt, handleUserInteraction, { capture: true, passive: true });
+      if (document.documentElement) {
+        document.documentElement.addEventListener(evt, handleUserInteraction, { capture: true, passive: true });
+      }
       if (document.body) {
         document.body.addEventListener(evt, handleUserInteraction, { capture: true, passive: true });
       }
     });
 
     return () => {
+      if (audio) {
+        audio.removeEventListener('playing', onPlaying);
+      }
       removeAllListeners();
     };
   }, [isMusicEnabled, attemptPlayback]);

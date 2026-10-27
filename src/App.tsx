@@ -240,7 +240,9 @@ const MainPortfolio: React.FC = () => {
           <UniversalTechConsole />
         )}
 
-        <CyberSecuritySection />
+        {activeScenes.cybersecurity !== false && (
+          <CyberSecuritySection />
+        )}
 
         {activeScenes.skills !== false && (
           <SkillsSection />

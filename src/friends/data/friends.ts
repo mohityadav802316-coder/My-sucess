@@ -92,6 +92,40 @@ export interface Friend {
   createdAt?: any;
   updatedAt?: any;
   isDemo?: boolean;
+  location?: string | null;
+  city?: string | null;
+  state?: string | null;
+  hobbies?: string | null;
+  hobby?: string | null;
+  dream?: string | null;
+  goal?: string | null;
+  referredBy?: string | null;
+  relation?: string | null;
+  tagline?: string | null;
+  skills?: string[] | string | null;
+  projects?: string[] | string | null;
+  phone?: string | null;
+  isVerified?: boolean;
+  instagram?: string | null;
+  visibilitySettings?: FriendVisibilitySettings;
+}
+
+export interface FriendVisibilitySettings {
+  showFreeFire?: boolean;
+  showPhone?: boolean;
+  showLocation?: boolean;
+  showHobby?: boolean;
+  showDream?: boolean;
+  showReferredBy?: boolean;
+  showInstagram?: boolean;
+  showGallery?: boolean;
+  showSocial?: boolean;
+  showAbout?: boolean;
+  showSkillsCard?: boolean;
+  showProjectsCard?: boolean;
+  showHobbiesCard?: boolean;
+  showDreamCard?: boolean;
+  showBottomCards?: boolean;
 }
 
 export interface FriendsPrivateData {

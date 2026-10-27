@@ -38,10 +38,30 @@ import {
 } from '../../supabase';
 import { uploadToCloudinary, getCloudinaryConfig } from '../../services/cloudinary';
 
+// Local storage helper for instant cold starts
+const getCachedFriendsFromStorage = (): Friend[] | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('mohit_cached_friends');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return null;
+};
+
+const saveFriendsToStorage = (list: Friend[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('mohit_cached_friends', JSON.stringify(list));
+  } catch {}
+};
+
 // In-memory cache to prevent redundant Firestore queries
-let cachedFriends: Friend[] | null = null;
+let cachedFriends: Friend[] | null = getCachedFriendsFromStorage();
 let cachedSettings: FriendsConfigSettings | null = null;
-let cacheTimestamp = 0;
+let cacheTimestamp = cachedFriends ? Date.now() : 0;
 const CACHE_DURATION_MS = 60 * 1000; // 1 minute cache
 
 export interface FriendsRepository {
@@ -95,6 +115,25 @@ export class FirebaseFriendsRepository implements FriendsRepository {
           dob: data.dob || null,
           dobShowYear: data.dobShowYear !== false,
           whatsapp: data.whatsapp || null,
+          instagram: data.instagram || null,
+          location: data.location || null,
+          hobbies: data.hobbies || data.hobby || null,
+          hobby: data.hobbies || data.hobby || null,
+          dream: data.dream || data.goal || null,
+          goal: data.dream || data.goal || null,
+          skills: Array.isArray(data.skills)
+            ? data.skills
+            : typeof data.skills === 'string'
+            ? data.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+            : null,
+          projects: Array.isArray(data.projects)
+            ? data.projects
+            : typeof data.projects === 'string'
+            ? data.projects.split(',').map((p: string) => p.trim()).filter(Boolean)
+            : null,
+          referredBy: data.referredBy || data.relation || null,
+          relation: data.referredBy || data.relation || null,
+          visibilitySettings: data.visibilitySettings || null,
           links: Array.isArray(data.links) ? data.links : [],
           accent: data.accent || '#00F2FE',
           online: data.online ?? null,
@@ -110,6 +149,7 @@ export class FirebaseFriendsRepository implements FriendsRepository {
 
       cachedFriends = list;
       cacheTimestamp = now;
+      saveFriendsToStorage(list);
 
       return this.filterByCategory(list, category);
     } catch (err: any) {
@@ -161,6 +201,25 @@ export class FirebaseFriendsRepository implements FriendsRepository {
         dob: data.dob || null,
         dobShowYear: data.dobShowYear !== false,
         whatsapp: data.whatsapp || null,
+        instagram: data.instagram || null,
+        location: data.location || null,
+        hobbies: data.hobbies || data.hobby || null,
+        hobby: data.hobbies || data.hobby || null,
+        dream: data.dream || data.goal || null,
+        goal: data.dream || data.goal || null,
+        skills: Array.isArray(data.skills)
+          ? data.skills
+          : typeof data.skills === 'string'
+          ? data.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+          : null,
+        projects: Array.isArray(data.projects)
+          ? data.projects
+          : typeof data.projects === 'string'
+          ? data.projects.split(',').map((p: string) => p.trim()).filter(Boolean)
+          : null,
+        referredBy: data.referredBy || data.relation || null,
+        relation: data.referredBy || data.relation || null,
+        visibilitySettings: data.visibilitySettings || null,
         links: Array.isArray(data.links) ? data.links : [],
         accent: data.accent || '#00F2FE',
         online: data.online ?? null,
@@ -419,12 +478,18 @@ export function useFriends(category?: CategoryKey): UseFriendsResult {
     return [];
   });
 
-  const [isLoading, setIsLoading] = useState<boolean>(() => !cachedFriends);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const current = cachedFriends || getCachedFriendsFromStorage();
+    return !(current && current.length > 0);
+  });
   const [error, setError] = useState<Error | null>(null);
 
   const fetchFriends = async () => {
     try {
-      setIsLoading(true);
+      const current = cachedFriends || getCachedFriendsFromStorage();
+      if (!current || current.length === 0) {
+        setIsLoading(true);
+      }
       setError(null);
       const data = await friendsRepository.list(category, true);
       setFriends(data);
@@ -438,7 +503,9 @@ export function useFriends(category?: CategoryKey): UseFriendsResult {
             : (err instanceof Error ? err.message : String(err))
         )
       );
-      setFriends([]); // Strictly empty array on error, NO fake demo data!
+      if (friends.length === 0) {
+        setFriends([]); // Strictly empty array on error if no cache exists
+      }
     } finally {
       setIsLoading(false);
     }
@@ -446,7 +513,10 @@ export function useFriends(category?: CategoryKey): UseFriendsResult {
 
   useEffect(() => {
     // 1. Subscribe to real-time updates from Firestore
-    setIsLoading(true);
+    const current = cachedFriends || getCachedFriendsFromStorage();
+    if (!current || current.length === 0) {
+      setIsLoading(true);
+    }
     setError(null);
 
     // Failsafe timer (3.0s): ensure spinner never hangs indefinitely
@@ -497,6 +567,7 @@ export function useFriends(category?: CategoryKey): UseFriendsResult {
           list.sort((a, b) => (a.order || 0) - (b.order || 0));
           cachedFriends = list;
           cacheTimestamp = Date.now();
+          saveFriendsToStorage(list);
 
           const isAdmin = isUserAdmin(auth.currentUser);
           const visibleList = isAdmin ? list : list.filter((f) => f.isVisible !== false);

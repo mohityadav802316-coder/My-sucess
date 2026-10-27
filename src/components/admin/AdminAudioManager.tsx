@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
@@ -64,6 +64,26 @@ export const AdminAudioManager: React.FC = () => {
   // Audio Preview state
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (siteSettings.music) {
+      if (siteSettings.music.enabled !== undefined) setMusicEnabled(siteSettings.music.enabled);
+      if (siteSettings.music.audioUrl) setAudioUrl(siteSettings.music.audioUrl);
+      if (siteSettings.music.volume !== undefined) setVolume(siteSettings.music.volume);
+      if (siteSettings.music.title) setMusicTitle(siteSettings.music.title);
+      if (siteSettings.music.fadeInSeconds !== undefined) setFadeInSeconds(siteSettings.music.fadeInSeconds);
+    }
+    if (siteSettings.magicSmoke) {
+      if (siteSettings.magicSmoke.enabled !== undefined) setSmokeEnabled(siteSettings.magicSmoke.enabled);
+      if (siteSettings.magicSmoke.intensity) setSmokeIntensity(siteSettings.magicSmoke.intensity as any);
+    }
+    if (siteSettings.explodedIntro?.enabled !== undefined) {
+      setIntroEnabled(siteSettings.explodedIntro.enabled);
+    }
+    if (siteSettings.lowDataMode !== undefined) {
+      setLowDataDefault(siteSettings.lowDataMode);
+    }
+  }, [siteSettings.music, siteSettings.magicSmoke, siteSettings.explodedIntro, siteSettings.lowDataMode]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);

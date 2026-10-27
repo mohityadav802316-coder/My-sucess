@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './friends.css';
 import { CategoryKey } from './data/friends';
 import { useFriends, useFriend, useFriendsConfig } from './data/repository';
@@ -10,6 +10,7 @@ import { FullProfileModal } from './components/FullProfileModal';
 import { LightboxModal } from './components/LightboxModal';
 import { BackgroundUniverse3D, FXLevel } from './components/BackgroundUniverse3D';
 import { FXToggle } from './components/FXToggle';
+import { FriendsWelcomeLoader } from './components/FriendsWelcomeLoader';
 import { initTilt } from './utils/tiltManager';
 import { isUserAdmin, auth } from '../firebase';
 import { ArrowLeft, X, AlertTriangle, RefreshCw, Sparkles } from 'lucide-react';
@@ -63,9 +64,7 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
     return 'high';
   });
 
-  // Minimum loading time tracker (ensures at least 350ms so loading screen feels intentional, not flickering)
-  const [minLoadingDone, setMinLoadingDone] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(15);
+
 
   // Friends settings from Firebase Firestore
   const { settings } = useFriendsConfig();
@@ -83,22 +82,17 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
   );
   const { friend: activeFriend } = useFriend(activeProfileId);
 
-  // Simulated smooth loading percentage progression
-  useEffect(() => {
-    if (isOpen) {
-      setMinLoadingDone(false);
-      setLoadingProgress(25);
-      const timer1 = setTimeout(() => setLoadingProgress(70), 120);
-      const timer2 = setTimeout(() => {
-        setLoadingProgress(100);
-        setMinLoadingDone(true);
-      }, 350);
-      return () => {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
-      };
-    }
-  }, [isOpen]);
+  const currentSelectedFriend = useMemo(() => {
+    if (!activeProfileId) return null;
+    return (
+      activeFriend ||
+      mainFriends.find((f) => f.id === activeProfileId) ||
+      categoryFriends.find((f) => f.id === activeProfileId) ||
+      null
+    );
+  }, [activeProfileId, activeFriend, mainFriends, categoryFriends]);
+
+
 
   // Synchronize when portfolio Low Effects setting changes
   useEffect(() => {
@@ -273,7 +267,7 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
   );
 
   const isAdmin = isUserAdmin(auth.currentUser);
-  const showLoader = isMainLoading || !minLoadingDone;
+  const showLoader = isMainLoading && mainFriends.length === 0;
 
   if (!isOpen) return null;
 
@@ -347,31 +341,7 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
         {/* Main Body Area: Loader / Error / Friends List */}
         <div className="w-full flex-grow flex flex-col items-center mt-2 animate-in fade-in duration-300">
           {showLoader ? (
-            /* Section 7 Holographic Loading Screen with Starfield Warp & Particle Ring */
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-[#00f2fe] animate-pulse">
-              <div className="relative flex items-center justify-center w-20 h-20">
-                {/* Outer spinning neon ring */}
-                <div className="absolute inset-0 rounded-full border-2 border-[#00f2fe]/30 border-t-[#00f2fe] animate-spin" />
-                {/* Inner counter-spinning gold ring */}
-                <div className="absolute inset-2 rounded-full border border-[#ffb53d]/40 border-b-[#ffb53d] animate-spin-reverse" />
-                <Sparkles className="w-6 h-6 text-[#00f2fe] animate-bounce" />
-              </div>
-              <div className="flex flex-col items-center gap-1.5">
-                <span className="text-xs font-mono font-bold tracking-widest text-[#00f2fe] uppercase">
-                  INITIALIZING HOLOGRAPHIC NETWORK {loadingProgress}%
-                </span>
-                <span className="text-[11px] font-medium text-[#8fa3bf]">
-                  Firebase Firestore से सुरक्षित डेटा लोड हो रहा है...
-                </span>
-              </div>
-              {/* Mini energy progress bar */}
-              <div className="w-48 h-1 bg-[#111726] rounded-full overflow-hidden border border-[#1f2b46]">
-                <div
-                  className="h-full bg-gradient-to-r from-[#00f2fe] to-[#9b5cff] transition-all duration-300"
-                  style={{ width: `${loadingProgress}%` }}
-                />
-              </div>
-            </div>
+            <FriendsWelcomeLoader statusText="फ्रेंड्स नेटवर्क लोड हो रहा है..." />
           ) : mainError ? (
             /* Section 9 Error State (Strictly NO fake demo friends) */
             <div className="flex flex-col items-center justify-center py-12 px-6 text-center max-w-md mx-auto my-6 rounded-2xl bg-[#111726]/90 border border-rose-500/40 shadow-xl shadow-rose-950/40">
@@ -408,6 +378,7 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
               friends={mainFriends}
               onOpenProfile={(id) => handleOpenProfile(id, true)}
               isAdmin={isAdmin}
+              isLoading={isMainLoading}
             />
           )}
         </div>
@@ -433,18 +404,43 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
         />
       )}
 
-      {/* Loading state when direct deep-linked friend profile is fetching */}
-      {activeProfileId && !activeFriend && (
-        <div className="fixed inset-0 z-50 bg-[#0A0D14]/90 backdrop-blur-md flex flex-col items-center justify-center text-[#00f2fe] font-mono text-sm gap-3">
-          <div className="w-10 h-10 rounded-full border-2 border-[#00f2fe] border-t-transparent animate-spin" />
-          <span>दोस्त का 3D प्रोफाइल लोड हो रहा है...</span>
+      {/* Personalized Welcome Loading Screen when opening friend profile */}
+      {activeProfileId && !currentSelectedFriend && (
+        <div className="fixed inset-0 z-50 bg-[#030611]/95 backdrop-blur-2xl flex flex-col items-center justify-center text-center p-6 gap-5">
+          <div className="relative flex items-center justify-center w-24 h-24">
+            <div
+              className="absolute inset-0 rounded-full border-2 border-dashed border-cyan-400 animate-spin"
+              style={{ filter: 'drop-shadow(0 0 12px #00f2fe)' }}
+            />
+            <div
+              className="absolute inset-3 rounded-full border-2 border-purple-500 animate-spin-reverse"
+              style={{ filter: 'drop-shadow(0 0 12px #9b5cff)' }}
+            />
+            <Sparkles className="w-8 h-8 text-cyan-300 animate-pulse" />
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs font-mono tracking-[0.3em] text-cyan-400/80 uppercase">
+              HOLOGRAPHIC PROFILE LOADING
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-extrabold font-cyber tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-[#00f2fe] via-[#d946ef] to-[#ffb53d] drop-shadow-[0_0_25px_rgba(0,242,254,0.7)]">
+              वेलकम दोस्त
+            </h2>
+            <p className="text-xs font-mono text-slate-400 mt-1">
+              साइबर प्रोफाइल और गैलरी तैयार हो रही है...
+            </p>
+          </div>
+
+          <div className="w-56 h-1.5 bg-slate-900 rounded-full overflow-hidden border border-cyan-500/40 shadow-[0_0_12px_rgba(0,242,254,0.3)]">
+            <div className="h-full bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 animate-pulse w-full" />
+          </div>
         </div>
       )}
 
-      {/* Full 3D Hero Profile Page (Matching Mohit's Home 3D Screen) */}
-      {activeProfileId && activeFriend && (
+      {/* Full Cyberpunk Hero Profile Page (Matching Reference Image Exactly) */}
+      {activeProfileId && currentSelectedFriend && (
         <FriendHeroProfile3D
-          friend={activeFriend}
+          friend={currentSelectedFriend}
           onClose={() => handleCloseProfile(true)}
           onOpenLightbox={(img) => setLightboxImageUrl(img)}
           fxLevel={fxLevel}

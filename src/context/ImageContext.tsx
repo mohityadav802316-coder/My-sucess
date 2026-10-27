@@ -509,7 +509,27 @@ const getCachedSiteSettings = (): SiteSettings => {
   if (typeof window === 'undefined') return defaultSiteSettings;
   try {
     const raw = localStorage.getItem('mohit_cached_settings');
-    if (raw) return { ...defaultSiteSettings, ...JSON.parse(raw) };
+    const cachedMusicUrl = localStorage.getItem('mohit_bg_music_url');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (cachedMusicUrl && parsed.music) {
+        parsed.music.audioUrl = cachedMusicUrl;
+      }
+      return { ...defaultSiteSettings, ...parsed };
+    }
+    if (cachedMusicUrl) {
+      return {
+        ...defaultSiteSettings,
+        music: {
+          enabled: true,
+          volume: 0.35,
+          loop: true,
+          fadeInSeconds: 2,
+          ...defaultSiteSettings.music,
+          audioUrl: cachedMusicUrl,
+        },
+      };
+    }
   } catch {}
   return defaultSiteSettings;
 };
@@ -650,7 +670,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (docSnap.exists()) {
             const data = docSnap.data();
             setSiteSettings((prev) => {
-              return {
+              const merged: SiteSettings = {
                 ...defaultSiteSettings,
                 ...prev,
                 ...data,
@@ -674,7 +694,7 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   ...prev.scenes,
                   ...(data.scenes || {}),
                   activeScenes: {
-                    ...defaultSiteSettings.scenes.activeScenes,
+                    ...defaultSiteSettings.scenes?.activeScenes,
                     ...(data.scenes?.activeScenes || {}),
                   },
                 },
@@ -708,6 +728,18 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 skills: data.skills || prev.skills || defaultSkills,
                 milestones: data.milestones || prev.milestones || defaultMilestones,
               };
+
+              if (typeof window !== 'undefined') {
+                try {
+                  const safeToCache = { ...merged, lastPublishedAt: undefined, updatedAt: undefined };
+                  localStorage.setItem('mohit_cached_settings', JSON.stringify(safeToCache));
+                  if (merged.music?.audioUrl) {
+                    localStorage.setItem('mohit_bg_music_url', merged.music.audioUrl);
+                  }
+                } catch {}
+              }
+
+              return merged;
             });
           }
         },
@@ -736,7 +768,19 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         lastPublishedAt: publishImmediately ? serverTimestamp() : siteSettings.lastPublishedAt,
         updatedAt: serverTimestamp(),
       };
+
       await setDoc(settingsRef, merged, { merge: true });
+
+      if (typeof window !== 'undefined') {
+        try {
+          const safeToCache = { ...merged, lastPublishedAt: undefined, updatedAt: undefined };
+          localStorage.setItem('mohit_cached_settings', JSON.stringify(safeToCache));
+          if (merged.music?.audioUrl) {
+            localStorage.setItem('mohit_bg_music_url', merged.music.audioUrl);
+          }
+        } catch {}
+      }
+
       setSiteSettings((prev) => ({
         ...prev,
         ...newSettings,

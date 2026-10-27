@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
 import { ProjectItem } from '../../types';
@@ -23,6 +23,12 @@ export const AdminProjectManager: React.FC = () => {
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!editingProject && projects && projects.length > 0) {
+      setProjectList(projects);
+    }
+  }, [projects]);
 
   const handleOpenEdit = (p: ProjectItem) => {
     sound.playClick();

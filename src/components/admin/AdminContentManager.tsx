@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
 import { ProfileSettings, SectionTexts } from '../../types';
@@ -78,6 +78,39 @@ export const AdminContentManager: React.FC = () => {
     contactTitle: sectionTexts.contactTitle || 'ESTABLISH SECURE LINK',
     contactTitleHi: sectionTexts.contactTitleHi || 'संपर्क सूत्र व संवाद',
   });
+
+  useEffect(() => {
+    if (siteSettings.profile) {
+      setProfileData({
+        name: siteSettings.profile.name || 'Mohit Yadav',
+        title: siteSettings.profile.title || 'Class 12 Science Student & Future AI Engineer',
+        titleHi: siteSettings.profile.titleHi || 'कक्षा 12 विज्ञान छात्र एवं भविष्य के AI इंजीनियर',
+        bioEn: siteSettings.profile.bioEn || 'Passionate student technologist focused on AI engineering, Python architectures, and defensive cybersecurity.',
+        bioHi: siteSettings.profile.bioHi || 'AI इंजीनियरिंग, पायथन आर्किटेक्चर और साइबर सुरक्षा में समर्पित छात्र प्रौद्योगिकीविद।',
+        education: siteSettings.profile.education || 'Class 12 Science (PCM)',
+        educationHi: siteSettings.profile.educationHi || 'कक्षा 12 विज्ञान (PCM)',
+        academicBoard: siteSettings.profile.academicBoard || 'Bihar School Examination Board (BSEB)',
+        targetRole: siteSettings.profile.targetRole || 'AI Engineer & Full-Stack Systems Architect',
+        targetRoleHi: siteSettings.profile.targetRoleHi || 'AI इंजीनियर एवं फुल-स्टैक सिस्टम आर्किटेक्ट',
+        careerGoalsEn: siteSettings.profile.careerGoalsEn || [
+          'Master advanced deep learning & agentic LLM systems',
+          'Architect production-grade defensive cybersecurity software',
+          'Build scalable web and native platforms for India and beyond'
+        ],
+        careerGoalsHi: siteSettings.profile.careerGoalsHi || [
+          'उन्नत डीप लर्निंग और AI सिस्टम्स में महारत हासिल करना',
+          'मजबूत और सुरक्षित साइबर सुरक्षा सॉफ्टवेयर तैयार करना',
+          'भारत और विश्व के लिए तकनीकी प्लेटफॉर्म्स का निर्माण करना'
+        ]
+      });
+    }
+    if (siteSettings.sectionTexts) {
+      setTexts((prev) => ({
+        ...prev,
+        ...siteSettings.sectionTexts,
+      }));
+    }
+  }, [siteSettings.profile, siteSettings.sectionTexts]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();

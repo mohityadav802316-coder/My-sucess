@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
@@ -31,6 +31,12 @@ export const AdminSkillsManager: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (!isModalOpen && skills && skills.length > 0) {
+      setSkillsList(skills);
+    }
+  }, [skills, isModalOpen]);
 
   // Form State
   const [formName, setFormName] = useState('');

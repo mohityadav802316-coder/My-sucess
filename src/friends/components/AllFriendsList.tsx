@@ -6,12 +6,14 @@ interface AllFriendsListProps {
   friends: Friend[];
   onOpenProfile: (id: string) => void;
   isAdmin?: boolean;
+  isLoading?: boolean;
 }
 
 export const AllFriendsList: React.FC<AllFriendsListProps> = ({
   friends,
   onOpenProfile,
   isAdmin = false,
+  isLoading = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -52,7 +54,22 @@ export const AllFriendsList: React.FC<AllFriendsListProps> = ({
         )}
       </div>
 
-      {filteredFriends.length === 0 ? (
+      {isLoading && friends.length === 0 ? (
+        <div className="flex flex-col gap-3 my-2 animate-pulse">
+          {[1, 2, 3].map((n) => (
+            <div
+              key={n}
+              className="w-full h-20 rounded-2xl bg-[#111726]/60 border border-[#1f2b46]/50 flex items-center px-4 gap-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-cyan-950/40 border border-cyan-500/20" />
+              <div className="flex-1 flex flex-col gap-2">
+                <div className="w-32 h-4 rounded bg-cyan-950/40" />
+                <div className="w-20 h-3 rounded bg-slate-800/40" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredFriends.length === 0 ? (
         <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-[#1f2b46] bg-[#111726]/40 text-[#8fa3bf] my-4">
           <p className="text-base font-medium">
             {searchQuery ? 'कोई दोस्त नहीं मिला' : 'अभी कोई दोस्त नहीं है।'}

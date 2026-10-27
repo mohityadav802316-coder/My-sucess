@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
 import { RoadmapMilestone } from '../../types';
@@ -21,6 +21,12 @@ export const AdminJourneyManager: React.FC = () => {
   const [editingMilestone, setEditingMilestone] = useState<RoadmapMilestone | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!editingMilestone && milestones && milestones.length > 0) {
+      setJourneyList(milestones);
+    }
+  }, [milestones]);
 
   const handleOpenEdit = (m: RoadmapMilestone) => {
     sound.playClick();

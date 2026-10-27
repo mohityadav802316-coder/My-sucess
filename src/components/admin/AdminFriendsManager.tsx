@@ -5,6 +5,7 @@ import {
   Friend,
   FriendPhoto,
   FriendSocialLink,
+  FriendVisibilitySettings,
   resolveImageUrl,
   DEFAULT_CATEGORIES,
   CategoryItem,
@@ -94,6 +95,34 @@ export const AdminFriendsManager: React.FC = () => {
   const [formIsVisible, setFormIsVisible] = useState(true);
   const [formOrder, setFormOrder] = useState(1);
 
+  // Additional Profile Details
+  const [formInstagram, setFormInstagram] = useState('');
+  const [formLocation, setFormLocation] = useState('');
+  const [formHobbies, setFormHobbies] = useState('');
+  const [formDream, setFormDream] = useState('');
+  const [formSkills, setFormSkills] = useState('');
+  const [formProjects, setFormProjects] = useState('');
+  const [formReferredBy, setFormReferredBy] = useState('');
+
+  // Per-Friend Visibility Settings (Show/Hide Controls)
+  const [formVisibility, setFormVisibility] = useState<FriendVisibilitySettings>({
+    showFreeFire: true,
+    showPhone: true,
+    showLocation: true,
+    showHobby: true,
+    showDream: true,
+    showReferredBy: true,
+    showInstagram: true,
+    showGallery: true,
+    showSocial: true,
+    showAbout: true,
+    showSkillsCard: true,
+    showProjectsCard: true,
+    showHobbiesCard: true,
+    showDreamCard: true,
+    showBottomCards: true,
+  });
+
   // Privacy Toggles (true = public, false = private stored in friendsPrivate)
   const [isBioPublic, setIsBioPublic] = useState(true);
   const [isDobPublic, setIsDobPublic] = useState(true);
@@ -164,6 +193,32 @@ export const AdminFriendsManager: React.FC = () => {
     setFormIsVisible(true);
     setFormOrder(friends.length + 1);
 
+    setFormInstagram('');
+    setFormLocation('');
+    setFormHobbies('');
+    setFormDream('');
+    setFormSkills('');
+    setFormProjects('');
+    setFormReferredBy('');
+
+    setFormVisibility({
+      showFreeFire: true,
+      showPhone: true,
+      showLocation: true,
+      showHobby: true,
+      showDream: true,
+      showReferredBy: true,
+      showInstagram: true,
+      showGallery: true,
+      showSocial: true,
+      showAbout: true,
+      showSkillsCard: true,
+      showProjectsCard: true,
+      showHobbiesCard: true,
+      showDreamCard: true,
+      showBottomCards: true,
+    });
+
     setIsBioPublic(true);
     setIsDobPublic(true);
     setIsFfPublic(true);
@@ -206,6 +261,32 @@ export const AdminFriendsManager: React.FC = () => {
     setFormWhatsapp(f.whatsapp || '');
     setFormIsVisible(f.isVisible !== false);
     setFormOrder(f.order || 1);
+
+    setFormInstagram(f.instagram || '');
+    setFormLocation(f.location || (f.city ? `${f.city}${f.state ? ', ' + f.state : ''}` : ''));
+    setFormHobbies(f.hobbies || f.hobby || '');
+    setFormDream(f.dream || f.goal || '');
+    setFormSkills(Array.isArray(f.skills) ? f.skills.join(', ') : (f.skills || ''));
+    setFormProjects(Array.isArray(f.projects) ? f.projects.join(', ') : (f.projects || ''));
+    setFormReferredBy(f.referredBy || f.relation || '');
+
+    setFormVisibility({
+      showFreeFire: f.visibilitySettings?.showFreeFire !== false,
+      showPhone: f.visibilitySettings?.showPhone !== false,
+      showLocation: f.visibilitySettings?.showLocation !== false,
+      showHobby: f.visibilitySettings?.showHobby !== false,
+      showDream: f.visibilitySettings?.showDream !== false,
+      showReferredBy: f.visibilitySettings?.showReferredBy !== false,
+      showInstagram: f.visibilitySettings?.showInstagram !== false,
+      showGallery: f.visibilitySettings?.showGallery !== false,
+      showSocial: f.visibilitySettings?.showSocial !== false,
+      showAbout: f.visibilitySettings?.showAbout !== false,
+      showSkillsCard: f.visibilitySettings?.showSkillsCard !== false,
+      showProjectsCard: f.visibilitySettings?.showProjectsCard !== false,
+      showHobbiesCard: f.visibilitySettings?.showHobbiesCard !== false,
+      showDreamCard: f.visibilitySettings?.showDreamCard !== false,
+      showBottomCards: f.visibilitySettings?.showBottomCards !== false,
+    });
 
     // Default privacy flags
     let bioPub = true;
@@ -590,6 +671,27 @@ export const AdminFriendsManager: React.FC = () => {
         dob: publicDob,
         dobShowYear: formDobShowYear,
         whatsapp: formWhatsapp.trim() || null,
+        instagram: formInstagram.trim() || null,
+        location: formLocation.trim() || null,
+        hobbies: formHobbies.trim() || null,
+        hobby: formHobbies.trim() || null,
+        dream: formDream.trim() || null,
+        goal: formDream.trim() || null,
+        skills: formSkills.trim()
+          ? formSkills
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : null,
+        projects: formProjects.trim()
+          ? formProjects
+              .split(',')
+              .map((p) => p.trim())
+              .filter(Boolean)
+          : null,
+        referredBy: formReferredBy.trim() || null,
+        relation: formReferredBy.trim() || null,
+        visibilitySettings: formVisibility,
         links: links.map((l) => ({ ...l, url: l.url.trim() })),
         accent: formAccent,
         order: Number(formOrder) || 1,
@@ -1128,10 +1230,10 @@ export const AdminFriendsManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* SECTION 3: GAMING & DETAILS */}
+              {/* SECTION 3: GAMING, SOCIAL & BIRTHDAY */}
               <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
                 <h5 className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-widest flex items-center justify-between">
-                  <span>3. गेमिंग व जन्मतिथि (Gaming & Birthday)</span>
+                  <span>3. गेमिंग व सोशल (Free Fire & Instagram)</span>
                 </h5>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1161,7 +1263,7 @@ export const AdminFriendsManager: React.FC = () => {
                         setFormFfName(e.target.value);
                         setIsDirty(true);
                       }}
-                      placeholder="Shadow_Ninja"
+                      placeholder="उदा. Shadow_Ninja"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
                     />
                   </div>
@@ -1169,7 +1271,7 @@ export const AdminFriendsManager: React.FC = () => {
                   {/* Free Fire UID */}
                   <div>
                     <label className="block text-[11px] font-mono text-slate-400 mb-1">
-                      Free Fire UID (No Link)
+                      Free Fire UID (ID Number)
                     </label>
                     <input
                       type="text"
@@ -1178,11 +1280,30 @@ export const AdminFriendsManager: React.FC = () => {
                         setFormFfUid(e.target.value);
                         setIsDirty(true);
                       }}
-                      placeholder="1098432190"
+                      placeholder="उदा. 1098432190"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
                     />
                   </div>
 
+                  {/* Instagram Username */}
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
+                      Instagram Username
+                    </label>
+                    <input
+                      type="text"
+                      value={formInstagram}
+                      onChange={(e) => {
+                        setFormInstagram(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="उदा. mohit_yadav_ai"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
                   {/* Gaming Role */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
@@ -1209,14 +1330,12 @@ export const AdminFriendsManager: React.FC = () => {
                         setFormRole(e.target.value);
                         setIsDirty(true);
                       }}
-                      placeholder="Sniper & Rusher"
+                      placeholder="उदा. Rusher & Sniper"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
                     />
                   </div>
-                </div>
 
-                {/* Birthday & Show Year Toggle */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  {/* Birthday */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[11px] font-mono text-slate-400">
@@ -1247,6 +1366,7 @@ export const AdminFriendsManager: React.FC = () => {
                     />
                   </div>
 
+                  {/* Show Year Toggle */}
                   <div className="flex flex-col justify-end">
                     <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer py-2">
                       <input
@@ -1258,9 +1378,375 @@ export const AdminFriendsManager: React.FC = () => {
                         }}
                         className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
                       />
-                      <span className="font-mono text-[11px]">जन्म वर्ष दिखाएँ (Show Birth Year)</span>
+                      <span className="font-mono text-[11px]">जन्म वर्ष दिखाएँ (Show Year)</span>
                     </label>
                   </div>
+                </div>
+              </div>
+
+              {/* SECTION 3B: व्यक्तिगत विवरण व प्रोफाइल हाईलाइट्स (Personal Details & Highlights) */}
+              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+                <h5 className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-widest">
+                  <span>3B. व्यक्तिगत विवरण (Personal Details & Highlights)</span>
+                </h5>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Location */}
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
+                      स्थान / पता (Location)
+                    </label>
+                    <input
+                      type="text"
+                      value={formLocation}
+                      onChange={(e) => {
+                        setFormLocation(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="उदा. India, Uttar Pradesh"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  {/* Hobbies */}
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
+                      शौक / हॉबी (Hobbies)
+                    </label>
+                    <input
+                      type="text"
+                      value={formHobbies}
+                      onChange={(e) => {
+                        setFormHobbies(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="उदा. Gaming, Music, Photography"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  {/* Dream / Goal */}
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
+                      सपना / लक्ष्य (Dream / Goal)
+                    </label>
+                    <input
+                      type="text"
+                      value={formDream}
+                      onChange={(e) => {
+                        setFormDream(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="उदा. Become an AI Developer"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  {/* Referred By */}
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
+                      रेफरल / संबंध (Referred By)
+                    </label>
+                    <input
+                      type="text"
+                      value={formReferredBy}
+                      onChange={(e) => {
+                        setFormReferredBy(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="उदा. Mohit Yadav"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  {/* Skills (Comma separated) */}
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
+                      कौशल / स्किल्स (Skills - कॉमा से अलग करें)
+                    </label>
+                    <input
+                      type="text"
+                      value={formSkills}
+                      onChange={(e) => {
+                        setFormSkills(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="उदा. Web Development, UI/UX Design, Python"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  {/* Projects (Comma separated) */}
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
+                      प्रोजेक्ट्स (Projects - कॉमा से अलग करें)
+                    </label>
+                    <input
+                      type="text"
+                      value={formProjects}
+                      onChange={(e) => {
+                        setFormProjects(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="उदा. Portfolio Website, AI Tools, Gaming App"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3C: दृश्यता व सेक्शन नियंत्रण (Per-Friend Show/Hide Controls) */}
+              <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/30 space-y-4 shadow-[0_0_20px_rgba(0,242,254,0.06)]">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-widest flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    <span>3C. प्रोफाइल दृश्यता नियंत्रण (Show / Hide Toggles)</span>
+                  </h5>
+                  <span className="text-[10px] font-mono text-cyan-400/80">
+                    हर दोस्त के लिए अलग नियंत्रण
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  नीचे दिए गए स्विच से तय करें कि इस दोस्त के प्रोफाइल में कौन-कौन से सेक्शन व फ़ील्ड्स दिखने चाहिए:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* Free Fire Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      🎮 Free Fire Name & UID दिखाएँ
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showFreeFire !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showFreeFire: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Phone Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      📞 मोबाइल / WhatsApp नंबर दिखाएँ
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showPhone !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showPhone: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Location Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      📍 लोकेशन दिखाएँ (Location)
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showLocation !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showLocation: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Hobby Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      🎯 हॉबी / शौक दिखाएँ (Personal Info में)
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showHobby !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showHobby: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Dream Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      🚀 सपना / Dream दिखाएँ (Personal Info में)
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showDream !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showDream: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Referred By Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      🤝 रेफरल / संबंध दिखाएँ (Referred By)
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showReferredBy !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showReferredBy: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Instagram Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      📸 इंस्टाग्राम लिंक दिखाएँ (Instagram)
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showInstagram !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showInstagram: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Gallery Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      🖼️ फोटो गैलरी सेक्शन दिखाएँ (Gallery)
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showGallery !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showGallery: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Social Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      🌐 सोशल मीडिया कनेक्ट सेक्शन (Connect)
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showSocial !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showSocial: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* About Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      📝 अबाउट मी (बायो) सेक्शन दिखाएँ (About)
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showAbout !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showAbout: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Bottom Cards Master Toggle */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      💡 नीचे के 4 कार्ड्स पूरा सेक्शन दिखाएँ
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showBottomCards !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showBottomCards: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  {/* Individual Bottom Card Toggles */}
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      💻 "My Skills" कार्ड दिखाएँ
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showSkillsCard !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showSkillsCard: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      ⭐ "My Projects" कार्ड दिखाएँ
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showProjectsCard !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showProjectsCard: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      🎮 "My Hobbies" कार्ड दिखाएँ
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showHobbiesCard !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showHobbiesCard: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 cursor-pointer transition-colors">
+                    <span className="text-xs font-mono text-slate-200">
+                      🚀 "My Dream" कार्ड दिखाएँ
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formVisibility.showDreamCard !== false}
+                      onChange={(e) => {
+                        setFormVisibility({ ...formVisibility, showDreamCard: e.target.checked });
+                        setIsDirty(true);
+                      }}
+                      className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
+                    />
+                  </label>
                 </div>
               </div>
 

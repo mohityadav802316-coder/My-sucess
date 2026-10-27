@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
 import { ContactSettings } from '../../types';
@@ -34,6 +34,26 @@ export const AdminContactManager: React.FC = () => {
     phoneNumber: contact?.phoneNumber || '',
     isPhonePublic: contact?.isPhonePublic ?? false,
   });
+
+  useEffect(() => {
+    if (siteSettings.contact) {
+      setFormData({
+        email: siteSettings.contact.email || 'mohityadav802316@gmail.com',
+        githubUrl: siteSettings.contact.githubUrl || 'https://github.com',
+        telegramUrl: siteSettings.contact.telegramUrl || '',
+        linkedinUrl: siteSettings.contact.linkedinUrl || '',
+        twitterUrl: siteSettings.contact.twitterUrl || '',
+        location: siteSettings.contact.location || 'Bihar, India',
+        locationHi: siteSettings.contact.locationHi || 'बिहार, भारत',
+        responseAvailability: siteSettings.contact.responseAvailability || 'Open for learning collaborations and tech discussions',
+        responseAvailabilityHi: siteSettings.contact.responseAvailabilityHi || 'तकनीकी सहयोग और चर्चा के लिए हमेशा उपलब्ध',
+        whatsappNumber: siteSettings.contact.whatsappNumber || '+918023160000',
+        instagramUrl: siteSettings.contact.instagramUrl || 'https://instagram.com/mohityadav',
+        phoneNumber: siteSettings.contact.phoneNumber || '',
+        isPhonePublic: siteSettings.contact.isPhonePublic ?? false,
+      });
+    }
+  }, [siteSettings.contact]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
 import { ThemeSettings } from '../../types';
@@ -31,6 +31,17 @@ export const AdminThemeCustomizer: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = useState(
     theme?.soundEnabledByDefault ?? false
   );
+
+  useEffect(() => {
+    if (siteSettings.theme) {
+      if (siteSettings.theme.neonColor) setNeonColor(siteSettings.theme.neonColor);
+      if (siteSettings.theme.glowIntensity) setGlowIntensity(siteSettings.theme.glowIntensity);
+      if (siteSettings.theme.fontFamily) setFontFamily(siteSettings.theme.fontFamily);
+      if (siteSettings.theme.backgroundStyle) setBackgroundStyle(siteSettings.theme.backgroundStyle);
+      if (siteSettings.theme.soundEnabledByDefault !== undefined) setSoundEnabled(siteSettings.theme.soundEnabledByDefault);
+    }
+  }, [siteSettings.theme]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 

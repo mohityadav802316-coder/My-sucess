@@ -283,6 +283,18 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Friends Universe 3D"
+      onTouchStartCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onTouchEndCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onPointerDownCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onClickCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
       className="friends-universe-root fixed inset-0 z-50 overflow-y-auto overflow-x-hidden flex flex-col justify-between"
       style={{
         background: 'radial-gradient(ellipse 90% 60% at 50% 0%, #1a1440 0%, #0A0D14 65%)',

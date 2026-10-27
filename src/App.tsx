@@ -173,7 +173,21 @@ const MainPortfolio: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 relative overflow-x-hidden">
+    <div
+      onTouchStartCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onTouchEndCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onPointerDownCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onClickCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 relative overflow-x-hidden"
+    >
       {/* High-Tech Cyber Boot Preloader (1.6s) to ensure instant zero-delay visual display */}
       {isBooting && (
         <CyberBootPreloader

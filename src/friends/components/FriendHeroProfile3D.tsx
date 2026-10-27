@@ -334,7 +334,16 @@ export const FriendHeroProfile3D: React.FC<FriendHeroProfile3DProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label={`${friend.name} Profile`}
-      onPointerDown={() => {
+      onTouchStartCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onTouchEndCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onPointerDownCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onClickCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
       className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-[#030611] text-slate-100 flex flex-col font-sans select-none"

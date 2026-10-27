@@ -6,7 +6,10 @@ import { sound } from './SoundEffects';
 let globalAudioInstance: HTMLAudioElement | null = null;
 let globalIsPlaying = false;
 let globalPlaybackStarted = false;
-let isPlaybackAttemptPending = false;
+let activePlayPromise: Promise<void> | null = null;
+
+export const CLOUDINARY_PRIMARY_AUDIO =
+  'https://res.cloudinary.com/xdwssllt/video/upload/v1793005297/portfolio_audio/mwoet0zflonxye8ifzpl.mp3';
 
 // Procedural Cyberpunk Ambient Drone Synthesizer (Zero network dependencies, emergency fallback only)
 class ProceduralAmbientSynth {
@@ -17,7 +20,9 @@ class ProceduralAmbientSynth {
 
   public initOrResume(): AudioContext | null {
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return null;
       if (!this.ctx) {
         this.ctx = new AudioCtx();
@@ -31,7 +36,7 @@ class ProceduralAmbientSynth {
     }
   }
 
-  public start(targetVolume = 0.3) {
+  public start(targetVolume = 0.8) {
     if (this.isRunning) return;
     try {
       const ctx = this.initOrResume();
@@ -104,15 +109,18 @@ const emergencySynth = new ProceduralAmbientSynth();
 
 /**
  * Filter and resolve audio URL:
- * 1. If Cloudinary / remote audio URL is provided, save to localStorage and use it.
- * 2. If url is default/local, check localStorage for a remote Cloudinary song saved previously.
- * 3. Fallback to local '/audio/ambient-cyberpunk.mp3'.
+ * 1. If remote audio URL is provided, save to localStorage and use it.
+ * 2. If cached in localStorage, return it.
+ * 3. Default to the active Cloudinary song (Rolex BGM).
  */
 function resolveAudioUrl(url: string | undefined): string {
-  // If remote URL is provided (Cloudinary / HTTPS)
   if (url && typeof url === 'string') {
     const trimmed = url.trim();
-    if (trimmed && (trimmed.startsWith('http://') || trimmed.startsWith('https://')) && !trimmed.includes('pixabay.com')) {
+    if (
+      trimmed &&
+      (trimmed.startsWith('http://') || trimmed.startsWith('https://')) &&
+      !trimmed.includes('pixabay.com')
+    ) {
       try {
         if (typeof window !== 'undefined') {
           localStorage.setItem('mohit_bg_music_url', trimmed);
@@ -122,25 +130,21 @@ function resolveAudioUrl(url: string | undefined): string {
     }
   }
 
-  // Check localStorage for remote URL
   if (typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem('mohit_bg_music_url');
-      if (stored && stored.trim() && (stored.startsWith('http://') || stored.startsWith('https://')) && !stored.includes('pixabay.com')) {
+      if (
+        stored &&
+        stored.trim() &&
+        (stored.startsWith('http://') || stored.startsWith('https://')) &&
+        !stored.includes('pixabay.com')
+      ) {
         return stored.trim();
       }
     } catch {}
   }
 
-  // If provided url is valid non-remote string
-  if (url && typeof url === 'string') {
-    const trimmed = url.trim();
-    if (trimmed && !trimmed.includes('pixabay.com')) {
-      return trimmed;
-    }
-  }
-
-  return '/audio/ambient-cyberpunk.mp3';
+  return CLOUDINARY_PRIMARY_AUDIO;
 }
 
 // Helper to retrieve or lazily create the single shared HTMLAudioElement
@@ -154,11 +158,10 @@ function getSharedAudio(initialUrl?: string): HTMLAudioElement | null {
     audio.setAttribute('playsinline', 'true');
     (audio as any).playsInline = true;
 
-    if (initialUrl) {
-      audio.src = initialUrl;
-    }
+    const url = initialUrl || CLOUDINARY_PRIMARY_AUDIO;
+    audio.src = url;
 
-    // Ensure seamless looping across all desktop and mobile browsers
+    // Seamless loop across all desktop and mobile browsers
     audio.addEventListener('ended', () => {
       try {
         audio.currentTime = 0;
@@ -174,11 +177,11 @@ function getSharedAudio(initialUrl?: string): HTMLAudioElement | null {
 /**
  * BackgroundMusic
  * - Single shared HTMLAudioElement for entire application.
- * - Starts reliably on the user's VERY FIRST screen touch/click/press anywhere on any page.
- * - Works on Home page, direct Friend Profile links (?friend=ID, /friend/ID), and all tabs.
- * - Direct Firestore sync on mount for fresh sessions.
- * - Debounced interaction handlers to prevent mobile AbortError.
- * - Exposes window.__startBackgroundMusic() for direct triggers.
+ * - Starts instantly on the user's VERY FIRST screen touch/tap/scroll anywhere on any page.
+ * - Works on mobile touches, scrolls, taps, clicks across Home, direct Friend links, and all tabs.
+ * - Does not block native 60fps scrolling or other interactions ({ passive: true }).
+ * - Immediate Firestore sync for fresh sessions and direct deep links.
+ * - Exposes window.__startBackgroundMusic() for zero-delay triggers.
  */
 export const BackgroundMusic: React.FC = () => {
   const { siteSettings } = useImages();
@@ -186,7 +189,7 @@ export const BackgroundMusic: React.FC = () => {
   const isMusicEnabled = musicSettings?.enabled !== false;
   const rawAudioUrl = musicSettings?.audioUrl?.trim() || '';
   const [activeUrl, setActiveUrl] = useState<string>(() => resolveAudioUrl(rawAudioUrl));
-  const targetVolume = Math.min(Math.max(musicSettings?.volume ?? 0.35, 0.05), 1.0);
+  const targetVolume = Math.min(Math.max(musicSettings?.volume ?? 0.85, 0.05), 1.0);
   const [, setIsPlaying] = useState<boolean>(() => globalIsPlaying);
 
   const activeUrlRef = useRef<string>(activeUrl);
@@ -252,17 +255,18 @@ export const BackgroundMusic: React.FC = () => {
     const audio = getSharedAudio(activeUrlRef.current);
     if (!audio) return Promise.resolve(false);
 
-    const urlToPlay = sourceUrl || activeUrlRef.current;
-    if (!urlToPlay) return Promise.resolve(false);
+    const urlToPlay = sourceUrl || activeUrlRef.current || CLOUDINARY_PRIMARY_AUDIO;
 
     // Warm up sound effects context during user gesture
     sound.setMuted(false);
 
     // Synchronize volume
-    audio.volume = targetVolumeRef.current;
+    try {
+      audio.volume = targetVolumeRef.current;
+    } catch {}
 
     // If audio is already playing the desired track, preserve position and avoid restarting
-    if (!audio.paused && audio.src && audio.src.includes(urlToPlay)) {
+    if (!audio.paused && audio.currentTime > 0 && audio.src && audio.src.includes(urlToPlay)) {
       globalIsPlaying = true;
       globalPlaybackStarted = true;
       setIsPlaying(true);
@@ -273,6 +277,11 @@ export const BackgroundMusic: React.FC = () => {
     // Set source if not matching
     if (!audio.src || !audio.src.includes(urlToPlay)) {
       audio.src = urlToPlay;
+    }
+
+    // If play promise is already in progress, avoid double invoking to prevent browser AbortError
+    if (activePlayPromise) {
+      return activePlayPromise.then(() => true).catch(() => false);
     }
 
     // Set error listener for automatic fallback
@@ -291,9 +300,10 @@ export const BackgroundMusic: React.FC = () => {
     try {
       const playPromise = audio.play();
       if (playPromise !== undefined) {
+        activePlayPromise = playPromise;
         return playPromise
           .then(() => {
-            console.log('[BackgroundMusic] Audio playback active on:', urlToPlay);
+            activePlayPromise = null;
             globalIsPlaying = true;
             globalPlaybackStarted = true;
             setIsPlaying(true);
@@ -301,10 +311,11 @@ export const BackgroundMusic: React.FC = () => {
             return true;
           })
           .catch((err: any) => {
+            activePlayPromise = null;
             if (err?.name === 'NotAllowedError') {
-              console.warn('[BackgroundMusic] Browser autoplay policy blocked. Will retry on next interaction.');
+              console.warn('[BackgroundMusic] Autoplay policy waiting for user touch gesture.');
             } else if (err?.name === 'AbortError') {
-              console.log('[BackgroundMusic] Play request interrupted or debounced.');
+              console.log('[BackgroundMusic] Play request debounced.');
             } else {
               console.warn('[BackgroundMusic] Playback exception:', err?.name, err?.message);
             }
@@ -312,29 +323,23 @@ export const BackgroundMusic: React.FC = () => {
           });
       }
     } catch (err: any) {
+      activePlayPromise = null;
       console.warn('[BackgroundMusic] Play invocation error:', err?.message || err);
     }
     return Promise.resolve(false);
   }, []);
 
-  // Expose global starter on window for direct friend profile clicks
+  // Expose global starter on window for direct friend profile and UI interactions
   useEffect(() => {
     (window as any).__startBackgroundMusic = () => {
-      if (!isPlaybackAttemptPending) {
-        isPlaybackAttemptPending = true;
-        attemptPlayback().finally(() => {
-          setTimeout(() => {
-            isPlaybackAttemptPending = false;
-          }, 300);
-        });
-      }
+      attemptPlayback();
     };
     return () => {
       delete (window as any).__startBackgroundMusic;
     };
   }, [attemptPlayback]);
 
-  // Attach touch/click listeners for the FIRST user interaction anywhere
+  // Attach touch/scroll/click listeners for the FIRST genuine user interaction anywhere
   useEffect(() => {
     if (!isMusicEnabled) {
       if (globalAudioInstance && !globalAudioInstance.paused) {
@@ -348,31 +353,33 @@ export const BackgroundMusic: React.FC = () => {
 
     // Pre-initialize shared audio with current active URL so it is immediately ready
     const audio = getSharedAudio(activeUrlRef.current);
-    if (audio && !audio.paused) {
+    if (audio && !audio.paused && audio.currentTime > 0) {
       setIsPlaying(true);
       return;
     }
 
     let isListenerActive = true;
-    const userEvents = ['pointerdown', 'touchstart', 'click', 'keydown'];
+    // Listen for mobile screen touch (touchstart, touchend, touchmove), scrolling, pointerdown, click, and keys
+    const userEvents = ['touchstart', 'touchend', 'touchmove', 'pointerdown', 'mousedown', 'click', 'scroll', 'keydown'];
+
+    const removeAllListeners = () => {
+      isListenerActive = false;
+      userEvents.forEach((evt) => {
+        window.removeEventListener(evt, handleUserInteraction, true);
+        document.removeEventListener(evt, handleUserInteraction, true);
+        if (document.body) {
+          document.body.removeEventListener(evt, handleUserInteraction, true);
+        }
+      });
+    };
 
     const handleUserInteraction = () => {
       if (!isListenerActive) return;
-      if (isPlaybackAttemptPending) return;
-
-      isPlaybackAttemptPending = true;
-      setTimeout(() => {
-        isPlaybackAttemptPending = false;
-      }, 350);
 
       // Attempt playback directly inside the synchronous user gesture stack
       attemptPlayback().then((started) => {
         if (started && isListenerActive) {
-          isListenerActive = false;
-          userEvents.forEach((evt) => {
-            window.removeEventListener(evt, handleUserInteraction, true);
-            document.removeEventListener(evt, handleUserInteraction, true);
-          });
+          removeAllListeners();
         }
       });
     };
@@ -380,14 +387,13 @@ export const BackgroundMusic: React.FC = () => {
     userEvents.forEach((evt) => {
       window.addEventListener(evt, handleUserInteraction, { capture: true, passive: true });
       document.addEventListener(evt, handleUserInteraction, { capture: true, passive: true });
+      if (document.body) {
+        document.body.addEventListener(evt, handleUserInteraction, { capture: true, passive: true });
+      }
     });
 
     return () => {
-      isListenerActive = false;
-      userEvents.forEach((evt) => {
-        window.removeEventListener(evt, handleUserInteraction, true);
-        document.removeEventListener(evt, handleUserInteraction, true);
-      });
+      removeAllListeners();
     };
   }, [isMusicEnabled, attemptPlayback]);
 

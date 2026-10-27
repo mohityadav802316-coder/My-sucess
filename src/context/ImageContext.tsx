@@ -422,9 +422,9 @@ export const defaultSiteSettings: SiteSettings = {
   },
   music: {
     enabled: true,
-    audioUrl: '/audio/ambient-cyberpunk.mp3',
-    volume: 0.35,
-    title: 'Cyberpunk Ambient Dream',
+    audioUrl: 'https://res.cloudinary.com/xdwssllt/video/upload/v1793005297/portfolio_audio/mwoet0zflonxye8ifzpl.mp3',
+    volume: 0.85,
+    title: 'Rolex Bgm Ringtone',
     loop: true,
     fadeInSeconds: 2,
   },

@@ -108,7 +108,7 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
     }
   }, [isOpen]);
 
-  // Deep linking URL check (?friend=ID or #friend=ID)
+  // Deep linking URL check (?friend=ID or #friend=ID or /friend/ID)
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
@@ -120,7 +120,14 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
       const hash = window.location.hash;
       if (hash.startsWith('#friend=')) {
         const id = hash.replace('#friend=', '');
-        if (id) setActiveProfileId(id);
+        if (id) {
+          setActiveProfileId(id);
+          return;
+        }
+      }
+      const pathMatch = window.location.pathname.match(/\/(?:friend|friends)\/([^/?#]+)/i);
+      if (pathMatch && pathMatch[1]) {
+        setActiveProfileId(decodeURIComponent(pathMatch[1]));
       }
     }
   }, [isOpen]);

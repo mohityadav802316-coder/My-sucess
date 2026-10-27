@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useImages } from '../../context/ImageContext';
 import { sound } from './SoundEffects';
 
@@ -6,6 +6,7 @@ import { sound } from './SoundEffects';
 let globalAudioInstance: HTMLAudioElement | null = null;
 let globalIsPlaying = false;
 let globalPlaybackStarted = false;
+let isPlaybackAttemptPending = false;
 
 // Procedural Cyberpunk Ambient Drone Synthesizer (Zero network dependencies, emergency fallback only)
 class ProceduralAmbientSynth {
@@ -63,7 +64,6 @@ class ProceduralAmbientSynth {
         osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
         osc.frequency.setValueAtTime(freq, ctx.currentTime);
         osc.detune.setValueAtTime((idx - 2) * 4, ctx.currentTime);
-
         oscGain.gain.setValueAtTime(0.14 / frequencies.length, ctx.currentTime);
         osc.connect(oscGain);
         oscGain.connect(filter);
@@ -102,18 +102,61 @@ class ProceduralAmbientSynth {
 
 const emergencySynth = new ProceduralAmbientSynth();
 
+/**
+ * Filter and resolve audio URL:
+ * 1. If Cloudinary / remote audio URL is provided, save to localStorage and use it.
+ * 2. If url is default/local, check localStorage for a remote Cloudinary song saved previously.
+ * 3. Fallback to local '/audio/ambient-cyberpunk.mp3'.
+ */
+function resolveAudioUrl(url: string | undefined): string {
+  // If remote URL is provided (Cloudinary / HTTPS)
+  if (url && typeof url === 'string') {
+    const trimmed = url.trim();
+    if (trimmed && (trimmed.startsWith('http://') || trimmed.startsWith('https://')) && !trimmed.includes('pixabay.com')) {
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('mohit_bg_music_url', trimmed);
+        }
+      } catch {}
+      return trimmed;
+    }
+  }
+
+  // Check localStorage for remote URL
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('mohit_bg_music_url');
+      if (stored && stored.trim() && (stored.startsWith('http://') || stored.startsWith('https://')) && !stored.includes('pixabay.com')) {
+        return stored.trim();
+      }
+    } catch {}
+  }
+
+  // If provided url is valid non-remote string
+  if (url && typeof url === 'string') {
+    const trimmed = url.trim();
+    if (trimmed && !trimmed.includes('pixabay.com')) {
+      return trimmed;
+    }
+  }
+
+  return '/audio/ambient-cyberpunk.mp3';
+}
+
 // Helper to retrieve or lazily create the single shared HTMLAudioElement
-function getSharedAudio(): HTMLAudioElement | null {
+function getSharedAudio(initialUrl?: string): HTMLAudioElement | null {
   if (typeof window === 'undefined') return null;
   if (!globalAudioInstance) {
     const audio = new Audio();
-    // On-demand fast loading: preload metadata only, never block bandwidth on startup
-    audio.preload = 'metadata';
+    audio.preload = 'auto';
     audio.loop = true;
     audio.crossOrigin = 'anonymous';
-    // iOS Safari inline playback policy
     audio.setAttribute('playsinline', 'true');
     (audio as any).playsInline = true;
+
+    if (initialUrl) {
+      audio.src = initialUrl;
+    }
 
     // Ensure seamless looping across all desktop and mobile browsers
     audio.addEventListener('ended', () => {
@@ -129,60 +172,84 @@ function getSharedAudio(): HTMLAudioElement | null {
 }
 
 /**
- * Filter and resolve audio URL:
- * 1. If Cloudinary audio URL is in siteSettings, use it.
- * 2. If cached in localStorage from previous session or admin upload, use immediately.
- * 3. Fallback to local '/audio/ambient-cyberpunk.mp3'.
- */
-function resolveAudioUrl(url: string | undefined): string {
-  if (url && typeof url === 'string') {
-    const trimmed = url.trim();
-    if (trimmed && !trimmed.includes('pixabay.com')) {
-      return trimmed;
-    }
-  }
-
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem('mohit_bg_music_url');
-      if (stored && stored.trim() && !stored.includes('pixabay.com')) {
-        return stored.trim();
-      }
-    } catch {}
-  }
-
-  return '/audio/ambient-cyberpunk.mp3';
-}
-
-/**
  * BackgroundMusic
  * - Single shared HTMLAudioElement for entire application.
- * - Starts automatically on the user's VERY FIRST screen touch/click/press anywhere.
- * - Respects browser autoplay policies and retries on subsequent gestures if blocked.
- * - Preserves playback position across internal page/tab navigation (zero duplicate audio).
- * - Fast on-demand streaming from Cloudinary CDN without slowing down the site.
+ * - Starts reliably on the user's VERY FIRST screen touch/click/press anywhere on any page.
+ * - Works on Home page, direct Friend Profile links (?friend=ID, /friend/ID), and all tabs.
+ * - Direct Firestore sync on mount for fresh sessions.
+ * - Debounced interaction handlers to prevent mobile AbortError.
+ * - Exposes window.__startBackgroundMusic() for direct triggers.
  */
 export const BackgroundMusic: React.FC = () => {
   const { siteSettings } = useImages();
-
-  const musicSettings = siteSettings.music;
+  const musicSettings = siteSettings?.music;
   const isMusicEnabled = musicSettings?.enabled !== false;
   const rawAudioUrl = musicSettings?.audioUrl?.trim() || '';
-  const resolvedUrl = resolveAudioUrl(rawAudioUrl);
+  const [activeUrl, setActiveUrl] = useState<string>(() => resolveAudioUrl(rawAudioUrl));
   const targetVolume = Math.min(Math.max(musicSettings?.volume ?? 0.35, 0.05), 1.0);
+  const [, setIsPlaying] = useState<boolean>(() => globalIsPlaying);
 
-  const [isPlaying, setIsPlaying] = useState<boolean>(() => globalIsPlaying);
-  const activeUrlRef = useRef<string>(resolvedUrl);
-  activeUrlRef.current = resolvedUrl;
-
+  const activeUrlRef = useRef<string>(activeUrl);
+  activeUrlRef.current = activeUrl;
   const targetVolumeRef = useRef<number>(targetVolume);
   targetVolumeRef.current = targetVolume;
+  const isMusicEnabledRef = useRef<boolean>(isMusicEnabled);
+  isMusicEnabledRef.current = isMusicEnabled;
+
+  // Direct Firestore fetch on mount for fresh sessions / direct friend URLs
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDirectSettings = async () => {
+      try {
+        const { db } = await import('../../firebase');
+        const { doc, getDoc } = await import('firebase/firestore');
+        const snap = await getDoc(doc(db, 'settings', 'general'));
+        if (snap.exists() && isMounted) {
+          const data = snap.data();
+          const remoteUrl = data?.music?.audioUrl;
+          if (remoteUrl && typeof remoteUrl === 'string' && remoteUrl.trim().startsWith('http')) {
+            const cleanUrl = remoteUrl.trim();
+            try {
+              localStorage.setItem('mohit_bg_music_url', cleanUrl);
+            } catch {}
+            setActiveUrl(cleanUrl);
+            activeUrlRef.current = cleanUrl;
+            const audio = getSharedAudio();
+            if (audio && (!audio.src || !audio.src.includes(cleanUrl))) {
+              audio.src = cleanUrl;
+            }
+          }
+        }
+      } catch {
+        // Fallback silently if offline or restricted
+      }
+    };
+    fetchDirectSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Sync state when siteSettings changes from context
+  useEffect(() => {
+    const nextUrl = resolveAudioUrl(rawAudioUrl);
+    if (nextUrl !== activeUrlRef.current) {
+      setActiveUrl(nextUrl);
+      activeUrlRef.current = nextUrl;
+      const audio = getSharedAudio();
+      if (audio && (!audio.src || !audio.src.includes(nextUrl))) {
+        audio.src = nextUrl;
+        if (globalPlaybackStarted && !audio.paused) {
+          audio.play().catch(() => {});
+        }
+      }
+    }
+  }, [rawAudioUrl]);
 
   // Single robust playback function
-  const attemptPlayback = (sourceUrl?: string): Promise<boolean> => {
-    if (!isMusicEnabled) return Promise.resolve(false);
-
-    const audio = getSharedAudio();
+  const attemptPlayback = useCallback((sourceUrl?: string): Promise<boolean> => {
+    if (!isMusicEnabledRef.current) return Promise.resolve(false);
+    const audio = getSharedAudio(activeUrlRef.current);
     if (!audio) return Promise.resolve(false);
 
     const urlToPlay = sourceUrl || activeUrlRef.current;
@@ -212,14 +279,9 @@ export const BackgroundMusic: React.FC = () => {
     audio.onerror = () => {
       const mediaError = audio.error;
       console.warn('[BackgroundMusic] Audio file error on URL:', urlToPlay, mediaError?.code, mediaError?.message);
-
-      // If Cloudinary or remote URL fails, attempt fallback to local MP3
       if (urlToPlay !== '/audio/ambient-cyberpunk.mp3') {
-        console.info('[BackgroundMusic] Remote playback failed, falling back to local ambient soundtrack.');
         attemptPlayback('/audio/ambient-cyberpunk.mp3');
       } else {
-        // Last-resort fallback to procedural synth
-        console.info('[BackgroundMusic] Local audio failed, activating emergency procedural synth.');
         emergencySynth.start(targetVolumeRef.current);
         globalIsPlaying = true;
         setIsPlaying(true);
@@ -240,9 +302,9 @@ export const BackgroundMusic: React.FC = () => {
           })
           .catch((err: any) => {
             if (err?.name === 'NotAllowedError') {
-              console.warn('[BackgroundMusic] Browser autoplay policy blocked first attempt. Will retry on next user interaction.');
+              console.warn('[BackgroundMusic] Browser autoplay policy blocked. Will retry on next interaction.');
             } else if (err?.name === 'AbortError') {
-              console.log('[BackgroundMusic] Play request interrupted by track change.');
+              console.log('[BackgroundMusic] Play request interrupted or debounced.');
             } else {
               console.warn('[BackgroundMusic] Playback exception:', err?.name, err?.message);
             }
@@ -252,9 +314,25 @@ export const BackgroundMusic: React.FC = () => {
     } catch (err: any) {
       console.warn('[BackgroundMusic] Play invocation error:', err?.message || err);
     }
-
     return Promise.resolve(false);
-  };
+  }, []);
+
+  // Expose global starter on window for direct friend profile clicks
+  useEffect(() => {
+    (window as any).__startBackgroundMusic = () => {
+      if (!isPlaybackAttemptPending) {
+        isPlaybackAttemptPending = true;
+        attemptPlayback().finally(() => {
+          setTimeout(() => {
+            isPlaybackAttemptPending = false;
+          }, 300);
+        });
+      }
+    };
+    return () => {
+      delete (window as any).__startBackgroundMusic;
+    };
+  }, [attemptPlayback]);
 
   // Attach touch/click listeners for the FIRST user interaction anywhere
   useEffect(() => {
@@ -268,8 +346,8 @@ export const BackgroundMusic: React.FC = () => {
       return;
     }
 
-    // If audio is already actively playing in the shared instance, no listeners needed
-    const audio = getSharedAudio();
+    // Pre-initialize shared audio with current active URL so it is immediately ready
+    const audio = getSharedAudio(activeUrlRef.current);
     if (audio && !audio.paused) {
       setIsPlaying(true);
       return;
@@ -280,19 +358,22 @@ export const BackgroundMusic: React.FC = () => {
 
     const handleUserInteraction = () => {
       if (!isListenerActive) return;
+      if (isPlaybackAttemptPending) return;
+
+      isPlaybackAttemptPending = true;
+      setTimeout(() => {
+        isPlaybackAttemptPending = false;
+      }, 350);
 
       // Attempt playback directly inside the synchronous user gesture stack
       attemptPlayback().then((started) => {
         if (started && isListenerActive) {
-          // Playback successfully started! Safely remove listeners to save CPU/battery
           isListenerActive = false;
           userEvents.forEach((evt) => {
             window.removeEventListener(evt, handleUserInteraction, true);
             document.removeEventListener(evt, handleUserInteraction, true);
           });
         }
-        // If started === false (e.g. browser blocked with NotAllowedError), listeners
-        // remain active so the very next user tap/click retries immediately!
       });
     };
 
@@ -308,17 +389,7 @@ export const BackgroundMusic: React.FC = () => {
         document.removeEventListener(evt, handleUserInteraction, true);
       });
     };
-  }, [isMusicEnabled]);
-
-  // When admin uploads a new song or changes audioUrl in Admin Panel
-  useEffect(() => {
-    if (!globalPlaybackStarted) return;
-    const audio = getSharedAudio();
-    if (audio && resolvedUrl && (!audio.src || !audio.src.includes(resolvedUrl))) {
-      console.log('[BackgroundMusic] Updating song to new URL from settings:', resolvedUrl);
-      attemptPlayback(resolvedUrl);
-    }
-  }, [resolvedUrl]);
+  }, [isMusicEnabled, attemptPlayback]);
 
   // When volume setting is adjusted in Admin Panel
   useEffect(() => {
@@ -328,7 +399,7 @@ export const BackgroundMusic: React.FC = () => {
     }
   }, [targetVolume]);
 
-  return null; // Headless shared background music engine
+  return null;
 };
 
 export default BackgroundMusic;

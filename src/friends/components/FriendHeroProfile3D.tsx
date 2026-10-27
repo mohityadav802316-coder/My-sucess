@@ -334,6 +334,9 @@ export const FriendHeroProfile3D: React.FC<FriendHeroProfile3DProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label={`${friend.name} Profile`}
+      onPointerDown={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
       className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-[#030611] text-slate-100 flex flex-col font-sans select-none"
       style={{
         background: 'radial-gradient(ellipse 100% 70% at 50% -10%, #0c1630 0%, #030611 65%)',

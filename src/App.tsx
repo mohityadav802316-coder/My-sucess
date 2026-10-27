@@ -90,7 +90,7 @@ class FriendsErrorBoundary extends React.Component<
 }
 
 // Helper to check if opening via direct friend profile share link
-const checkIsFriendsShareLink = () => {
+export const checkIsFriendsShareLink = () => {
   if (typeof window === 'undefined') return false;
   try {
     const params = new URLSearchParams(window.location.search);
@@ -99,6 +99,10 @@ const checkIsFriendsShareLink = () => {
     }
     const hash = window.location.hash || '';
     if (hash.startsWith('#friend=') || hash === '#friends' || hash === '#universe') {
+      return true;
+    }
+    const path = window.location.pathname.toLowerCase();
+    if (path.includes('/friend') || path.includes('/friends') || path.includes('/universe')) {
       return true;
     }
   } catch {}
@@ -183,7 +187,6 @@ const MainPortfolio: React.FC = () => {
       <CyberBackground />
       <CinematicCanvas3D isPaused={isFriendsOpen} />
       <MysticTouchSparks />
-      <BackgroundMusic />
 
       {/* Exploded View Intro Screen */}
       {showIntro && siteSettings.explodedIntro?.enabled !== false && (
@@ -350,6 +353,8 @@ export default function App() {
     <GlobalPortfolioErrorBoundary>
       <LanguageProvider>
         <ImageProvider>
+          {/* Application-Wide Background Music Engine: Active across all pages, direct links, and tabs */}
+          <BackgroundMusic />
           <MainPortfolio />
         </ImageProvider>
       </LanguageProvider>

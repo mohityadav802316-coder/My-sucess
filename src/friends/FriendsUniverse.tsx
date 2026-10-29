@@ -11,9 +11,31 @@ import { LightboxModal } from './components/LightboxModal';
 import { BackgroundUniverse3D, FXLevel } from './components/BackgroundUniverse3D';
 import { FXToggle } from './components/FXToggle';
 import { FriendsWelcomeLoader } from './components/FriendsWelcomeLoader';
+import { SharedProfilePreview } from './components/SharedProfilePreview';
 import { initTilt } from './utils/tiltManager';
 import { isUserAdmin, auth } from '../firebase';
 import { ArrowLeft, X, AlertTriangle, RefreshCw, Sparkles } from 'lucide-react';
+
+export const getSharedFriendIdFromUrl = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const friendParam = urlParams.get('friend');
+    if (friendParam && friendParam.trim()) {
+      return friendParam.trim();
+    }
+    const hash = window.location.hash;
+    if (hash.startsWith('#friend=')) {
+      const id = hash.replace('#friend=', '').trim();
+      if (id) return id;
+    }
+    const pathMatch = window.location.pathname.match(/\/(?:friend|friends)\/([^/?#]+)/i);
+    if (pathMatch && pathMatch[1]) {
+      return decodeURIComponent(pathMatch[1]).trim();
+    }
+  } catch {}
+  return null;
+};
 
 interface FriendsUniverseProps {
   isOpen: boolean;
@@ -44,8 +66,16 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
     digital: 0,
   });
 
+  // Check if visitor opened the page directly from a shared individual friend link
+  const initialSharedFriendId = useMemo(() => getSharedFriendIdFromUrl(), []);
+
   // Active full profile modal friend ID
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(() => initialSharedFriendId);
+
+  // Shared Profile Preview Screen mode:
+  // true ONLY if visitor opened an individual friend's profile via shared URL;
+  // false once "View More" is clicked, or when navigating within the website.
+  const [isPreviewMode, setIsPreviewMode] = useState<boolean>(() => Boolean(initialSharedFriendId));
 
   // Active lightbox image preview
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
@@ -80,7 +110,7 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
   const { friends: categoryFriends } = useFriends(
     activeCategoryPage || undefined
   );
-  const { friend: activeFriend } = useFriend(activeProfileId);
+  const { friend: activeFriend, isLoading: isActiveFriendLoading } = useFriend(activeProfileId);
 
   const currentSelectedFriend = useMemo(() => {
     if (!activeProfileId) return null;
@@ -172,6 +202,7 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
   // Open friend full profile with browser history state integration
   const handleOpenProfile = useCallback((id: string, pushHistory = true) => {
     setActiveProfileId(id);
+    setIsPreviewMode(false); // Direct in-app click opens full profile
     if (pushHistory) {
       try {
         window.history.pushState({ friendsProfileId: id }, '');
@@ -182,11 +213,17 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
   // Close profile
   const handleCloseProfile = useCallback((popHistory = true) => {
     setActiveProfileId(null);
+    setIsPreviewMode(false);
     if (popHistory && window.history.state?.friendsProfileId) {
       try {
         window.history.back();
       } catch (e) {}
     }
+  }, []);
+
+  // Transition from Preview Screen to complete profile upon clicking "View More"
+  const handleViewMoreFromPreview = useCallback(() => {
+    setIsPreviewMode(false);
   }, []);
 
   // Handle browser back button (nested popstate)
@@ -429,8 +466,18 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
         />
       )}
 
-      {/* Personalized Welcome Loading Screen when opening friend profile */}
-      {activeProfileId && !currentSelectedFriend && (
+      {/* 1. Shared Profile Preview Mode (Rendered ONLY when visitor opens a shared individual profile URL) */}
+      {activeProfileId && isPreviewMode && (
+        <SharedProfilePreview
+          friend={currentSelectedFriend}
+          isLoading={!currentSelectedFriend && (isActiveFriendLoading || isMainLoading)}
+          onViewMore={handleViewMoreFromPreview}
+          onClose={onClose}
+        />
+      )}
+
+      {/* 2. Personalized Welcome Loading Screen when opening friend profile in-app (if friend is loading) */}
+      {activeProfileId && !isPreviewMode && !currentSelectedFriend && (
         <div
           onTouchStartCapture={() => (window as any).__startBackgroundMusic?.()}
           onTouchMoveCapture={() => (window as any).__startBackgroundMusic?.()}
@@ -470,8 +517,8 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
         </div>
       )}
 
-      {/* Full Cyberpunk Hero Profile Page (Matching Reference Image Exactly) */}
-      {activeProfileId && currentSelectedFriend && (
+      {/* 3. Full Cyberpunk Hero Profile Page (Rendered after "View More" is clicked or opened in-app) */}
+      {activeProfileId && !isPreviewMode && currentSelectedFriend && (
         <FriendHeroProfile3D
           friend={currentSelectedFriend}
           onClose={() => handleCloseProfile(true)}

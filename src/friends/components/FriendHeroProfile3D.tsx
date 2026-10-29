@@ -337,10 +337,16 @@ export const FriendHeroProfile3D: React.FC<FriendHeroProfile3DProps> = ({
       onTouchStartCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
+      onTouchMoveCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
       onTouchEndCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
       onPointerDownCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onScrollCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
       onClickCapture={() => {

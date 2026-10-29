@@ -97,7 +97,7 @@ export const AdminAudioManager: React.FC = () => {
     setStatusMessage(null);
 
     try {
-      // Direct Unsigned Upload to Cloudinary API without Firebase or Supabase
+      // Upload audio file using resilient pipeline (Cloudinary with Firebase Storage fallback)
       const result = await uploadAudioToCloudinary(file, 'portfolio_audio');
 
       setAudioUrl(result.secureUrl);
@@ -119,12 +119,12 @@ export const AdminAudioManager: React.FC = () => {
       sound.playSuccess();
       setStatusMessage({
         type: 'success',
-        text: 'ऑडियो Cloudinary CDN पर सफलतापूर्वक अपलोड हो गया और बैकग्राउंड म्यूजिक में सेट हो गया!',
+        text: 'ऑडियो सफलतापूर्वक अपलोड हो गया और बैकग्राउंड म्यूजिक में सेट हो गया!',
       });
     } catch (err: any) {
-      console.error('Cloudinary audio upload error:', err);
+      console.error('Audio upload error:', err);
       sound.playAlert();
-      setStatusMessage({ type: 'error', text: 'Cloudinary Audio Upload Failed: ' + err.message });
+      setStatusMessage({ type: 'error', text: 'ऑडियो अपलोड त्रुटि: ' + (err.message || 'त्रुटि हुई') });
     } finally {
       setUploadingAudio(false);
     }

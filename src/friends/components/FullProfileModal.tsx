@@ -159,6 +159,12 @@ export const FullProfileModal: React.FC<FullProfileModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label={`${friend.name} Profile`}
+      onTouchStartCapture={() => (window as any).__startBackgroundMusic?.()}
+      onTouchMoveCapture={() => (window as any).__startBackgroundMusic?.()}
+      onTouchEndCapture={() => (window as any).__startBackgroundMusic?.()}
+      onPointerDownCapture={() => (window as any).__startBackgroundMusic?.()}
+      onScrollCapture={() => (window as any).__startBackgroundMusic?.()}
+      onClickCapture={() => (window as any).__startBackgroundMusic?.()}
       className="fixed inset-0 z-50 overflow-y-auto bg-[#0a0d14]/95 backdrop-blur-md flex flex-col p-4 sm:p-6"
     >
       <div className="w-full max-w-2xl mx-auto flex flex-col pb-16">

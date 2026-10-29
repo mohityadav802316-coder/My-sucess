@@ -72,7 +72,13 @@ export const CyberBackground: React.FC = () => {
       ctx.fillStyle = purpleGlow;
       ctx.fillRect(0, 0, width, height);
 
+      if (document.hidden) {
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+
       // Cyber particles
+      const isMobile = width < 768;
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.y += p.speedY;
@@ -87,11 +93,15 @@ export const CyberBackground: React.FC = () => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fillStyle = `${p.color} ${p.opacity * (0.8 + Math.sin(tick + i) * 0.2)})`;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = p.color === 'rgba(6, 182, 212,' ? '#06b6d4' : '#a855f7';
+        if (!isMobile) {
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = p.color === 'rgba(6, 182, 212,' ? '#06b6d4' : '#a855f7';
+        }
         ctx.fill();
       }
-      ctx.shadowBlur = 0;
+      if (!isMobile) {
+        ctx.shadowBlur = 0;
+      }
 
       animationFrameId = requestAnimationFrame(render);
     };

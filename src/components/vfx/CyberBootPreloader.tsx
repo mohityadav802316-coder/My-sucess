@@ -87,6 +87,9 @@ export const CyberBootPreloader: React.FC<CyberBootPreloaderProps> = ({
           onTouchStartCapture={() => {
             (window as any).__startBackgroundMusic?.();
           }}
+          onTouchMoveCapture={() => {
+            (window as any).__startBackgroundMusic?.();
+          }}
           onTouchEndCapture={() => {
             (window as any).__startBackgroundMusic?.();
           }}
@@ -94,6 +97,9 @@ export const CyberBootPreloader: React.FC<CyberBootPreloaderProps> = ({
             (window as any).__startBackgroundMusic?.();
           }}
           onPointerUpCapture={() => {
+            (window as any).__startBackgroundMusic?.();
+          }}
+          onScrollCapture={() => {
             (window as any).__startBackgroundMusic?.();
           }}
           onClickCapture={() => {

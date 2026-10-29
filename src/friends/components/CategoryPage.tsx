@@ -175,6 +175,12 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label={`${catMeta.label} Category`}
+      onTouchStartCapture={() => (window as any).__startBackgroundMusic?.()}
+      onTouchMoveCapture={() => (window as any).__startBackgroundMusic?.()}
+      onTouchEndCapture={() => (window as any).__startBackgroundMusic?.()}
+      onPointerDownCapture={() => (window as any).__startBackgroundMusic?.()}
+      onScrollCapture={() => (window as any).__startBackgroundMusic?.()}
+      onClickCapture={() => (window as any).__startBackgroundMusic?.()}
       className={`
         fixed inset-0 z-40 flex flex-col justify-between
         h-[100dvh] overflow-hidden select-none

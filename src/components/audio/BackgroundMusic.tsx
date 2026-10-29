@@ -175,11 +175,101 @@ function getSharedAudio(initialUrl?: string): HTMLAudioElement | null {
   return globalAudioInstance;
 }
 
+// Top-level global trigger function available immediately at startup (zero delay)
+export function triggerBackgroundMusic(customUrl?: string, customVolume?: number): Promise<boolean> {
+  if (typeof window === 'undefined') return Promise.resolve(false);
+  const audio = getSharedAudio();
+  if (!audio) return Promise.resolve(false);
+
+  // Warm up sound effects context during user gesture
+  sound.setMuted(false);
+
+  const urlToPlay = customUrl || resolveAudioUrl(undefined);
+  if (customVolume !== undefined) {
+    try {
+      audio.volume = Math.min(Math.max(customVolume, 0.05), 1.0);
+    } catch {}
+  }
+
+  // If audio is already playing smoothly, preserve position and avoid restarting
+  if (!audio.paused && audio.currentTime > 0 && audio.src && audio.src.includes(urlToPlay)) {
+    globalIsPlaying = true;
+    globalPlaybackStarted = true;
+    emergencySynth.stop();
+    return Promise.resolve(true);
+  }
+
+  // MUTEX GUARD: If a play request is already in-flight, return the existing promise
+  // This prevents rapid back-to-back pointerdown + touchstart from aborting each other with AbortError!
+  if (activePlayPromise) {
+    return activePlayPromise.then(() => true).catch(() => false);
+  }
+
+  // Set source if not matching
+  if (!audio.src || !audio.src.includes(urlToPlay)) {
+    audio.src = urlToPlay;
+    try {
+      audio.load();
+    } catch {}
+  }
+
+  // Set error listener for automatic fallback
+  audio.onerror = () => {
+    const mediaError = audio.error;
+    console.warn('[BackgroundMusic] Audio file notice on URL:', urlToPlay, mediaError?.code, mediaError?.message);
+    if (urlToPlay !== '/audio/ambient-cyberpunk.mp3') {
+      triggerBackgroundMusic('/audio/ambient-cyberpunk.mp3');
+    } else {
+      emergencySynth.start(customVolume ?? 0.85);
+      globalIsPlaying = true;
+    }
+  };
+
+  try {
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      activePlayPromise = playPromise;
+      return playPromise
+        .then(() => {
+          activePlayPromise = null;
+          globalIsPlaying = true;
+          globalPlaybackStarted = true;
+          emergencySynth.stop();
+          return true;
+        })
+        .catch((err: any) => {
+          activePlayPromise = null;
+          if (err?.name === 'NotAllowedError') {
+            // Browser autoplay restrictions require user gesture; silent wait
+          } else if (err?.name === 'AbortError') {
+            // Safely caught during fast gesture transitions
+          } else {
+            console.warn('[BackgroundMusic] Playback notice:', err?.name, err?.message);
+          }
+          return false;
+        });
+    }
+  } catch (err: any) {
+    activePlayPromise = null;
+    console.warn('[BackgroundMusic] Play invocation notice:', err?.message || err);
+  }
+  return Promise.resolve(false);
+}
+
+// Bind to window immediately so any button, tab, or route can trigger music with 0ms delay
+if (typeof window !== 'undefined') {
+  (window as any).__startBackgroundMusic = () => triggerBackgroundMusic();
+  // Try immediate autoplay right away on page load
+  setTimeout(() => {
+    triggerBackgroundMusic().catch(() => {});
+  }, 100);
+}
+
 /**
  * BackgroundMusic
  * - Single shared HTMLAudioElement for entire application.
- * - Starts instantly on the user's VERY FIRST screen touch/tap/scroll anywhere on any page.
- * - Works on mobile touches, scrolls, taps, clicks across Home, direct Friend links, and all tabs.
+ * - Starts instantly on initial page load (if browser permits) or on the user's VERY FIRST screen touch/scroll anywhere.
+ * - Works on mobile touches, scroll pans, taps, clicks across Home, direct Friend links, and all tabs.
  * - Does not block native 60fps scrolling or other interactions ({ passive: true }).
  * - Immediate Firestore sync for fresh sessions and direct deep links.
  * - Exposes window.__startBackgroundMusic() for zero-delay triggers.
@@ -200,40 +290,6 @@ export const BackgroundMusic: React.FC = () => {
   const isMusicEnabledRef = useRef<boolean>(isMusicEnabled);
   isMusicEnabledRef.current = isMusicEnabled;
 
-  // Direct Firestore fetch on mount for fresh sessions / direct friend URLs
-  useEffect(() => {
-    let isMounted = true;
-    const fetchDirectSettings = async () => {
-      try {
-        const { db } = await import('../../firebase');
-        const { doc, getDoc } = await import('firebase/firestore');
-        const snap = await getDoc(doc(db, 'settings', 'general'));
-        if (snap.exists() && isMounted) {
-          const data = snap.data();
-          const remoteUrl = data?.music?.audioUrl;
-          if (remoteUrl && typeof remoteUrl === 'string' && remoteUrl.trim().startsWith('http')) {
-            const cleanUrl = remoteUrl.trim();
-            try {
-              localStorage.setItem('mohit_bg_music_url', cleanUrl);
-            } catch {}
-            setActiveUrl(cleanUrl);
-            activeUrlRef.current = cleanUrl;
-            const audio = getSharedAudio();
-            if (audio && (!audio.src || !audio.src.includes(cleanUrl))) {
-              audio.src = cleanUrl;
-            }
-          }
-        }
-      } catch {
-        // Fallback silently if offline or restricted
-      }
-    };
-    fetchDirectSettings();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
   // Sync state when siteSettings changes from context
   useEffect(() => {
     const nextUrl = resolveAudioUrl(rawAudioUrl);
@@ -253,79 +309,7 @@ export const BackgroundMusic: React.FC = () => {
   // Single robust playback function
   const attemptPlayback = useCallback((sourceUrl?: string): Promise<boolean> => {
     if (!isMusicEnabledRef.current) return Promise.resolve(false);
-    const audio = getSharedAudio(activeUrlRef.current);
-    if (!audio) return Promise.resolve(false);
-
-    const urlToPlay = sourceUrl || activeUrlRef.current || CLOUDINARY_PRIMARY_AUDIO;
-
-    // Warm up sound effects context during user gesture
-    sound.setMuted(false);
-
-    // Synchronize volume
-    try {
-      audio.volume = targetVolumeRef.current;
-    } catch {}
-
-    // If audio is already playing smoothly, preserve position and avoid restarting
-    if (!audio.paused && audio.currentTime > 0 && audio.src && audio.src.includes(urlToPlay)) {
-      globalIsPlaying = true;
-      globalPlaybackStarted = true;
-      setIsPlaying(true);
-      emergencySynth.stop();
-      return Promise.resolve(true);
-    }
-
-    // Set source if not matching
-    if (!audio.src || !audio.src.includes(urlToPlay)) {
-      audio.src = urlToPlay;
-      try {
-        audio.load();
-      } catch {}
-    }
-
-    // Set error listener for automatic fallback
-    audio.onerror = () => {
-      const mediaError = audio.error;
-      console.warn('[BackgroundMusic] Audio file notice on URL:', urlToPlay, mediaError?.code, mediaError?.message);
-      if (urlToPlay !== '/audio/ambient-cyberpunk.mp3') {
-        attemptPlayback('/audio/ambient-cyberpunk.mp3');
-      } else {
-        emergencySynth.start(targetVolumeRef.current);
-        globalIsPlaying = true;
-        setIsPlaying(true);
-      }
-    };
-
-    try {
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        activePlayPromise = playPromise;
-        return playPromise
-          .then(() => {
-            activePlayPromise = null;
-            globalIsPlaying = true;
-            globalPlaybackStarted = true;
-            setIsPlaying(true);
-            emergencySynth.stop();
-            return true;
-          })
-          .catch((err: any) => {
-            activePlayPromise = null;
-            if (err?.name === 'NotAllowedError') {
-              // Expected if browser autoplay policy demands user gesture
-            } else if (err?.name === 'AbortError') {
-              // Interrupted by next touch/interaction
-            } else {
-              console.warn('[BackgroundMusic] Playback notice:', err?.name, err?.message);
-            }
-            return false;
-          });
-      }
-    } catch (err: any) {
-      activePlayPromise = null;
-      console.warn('[BackgroundMusic] Play invocation notice:', err?.message || err);
-    }
-    return Promise.resolve(false);
+    return triggerBackgroundMusic(sourceUrl || activeUrlRef.current, targetVolumeRef.current);
   }, []);
 
   // Expose global starter on window for direct friend profile and UI interactions
@@ -345,7 +329,7 @@ export const BackgroundMusic: React.FC = () => {
     }
   }, [isMusicEnabled, attemptPlayback]);
 
-  // 2. Attach touch/scroll/pointer/click listeners for FIRST genuine screen touch anywhere
+  // 2. Attach touch/scroll/pointer/click listeners for FIRST genuine screen touch or scroll anywhere
   useEffect(() => {
     if (!isMusicEnabled) {
       if (globalAudioInstance && !globalAudioInstance.paused) {
@@ -366,8 +350,10 @@ export const BackgroundMusic: React.FC = () => {
     let isListenerActive = true;
     const userEvents = [
       'touchstart',
+      'touchmove',
       'touchend',
       'pointerdown',
+      'pointermove',
       'pointerup',
       'mousedown',
       'mouseup',
@@ -378,6 +364,7 @@ export const BackgroundMusic: React.FC = () => {
     ];
 
     const removeAllListeners = () => {
+      if (!isListenerActive) return;
       isListenerActive = false;
       userEvents.forEach((evt) => {
         window.removeEventListener(evt, handleUserInteraction, true);
@@ -397,12 +384,14 @@ export const BackgroundMusic: React.FC = () => {
       attemptPlayback().then((started) => {
         if (started && isListenerActive) {
           removeAllListeners();
+          setIsPlaying(true);
         }
       });
     };
 
     // When audio successfully starts playing, remove gesture listeners
     const onPlaying = () => {
+      setIsPlaying(true);
       removeAllListeners();
     };
 

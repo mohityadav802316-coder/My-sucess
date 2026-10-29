@@ -600,11 +600,9 @@ export const ImageProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Real-time synchronization for images and settings
+  // Real-time synchronization for images and settings (single source of truth)
   useEffect(() => {
-    fetchPublishedImages();
-
-    // 1. Listen for images changes
+    // 1. Listen for images changes with immediate snapshot
     let unsubImages = () => {};
     try {
       const imagesRef = collection(db, 'images');

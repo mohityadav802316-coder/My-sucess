@@ -32,11 +32,17 @@ import { VisionSection } from './components/sections/VisionSection';
 import { ContactSection } from './components/sections/ContactSection';
 import { Footer } from './components/sections/Footer';
 
-// Modals & Interactive Floating Widgets
-import { FamilyVaultModal } from './components/family/FamilyVaultModal';
-import { AdminModal } from './components/admin/AdminModal';
+// Interactive Floating Widgets
 import { Floating3DFireFriendsButton } from './components/vfx/Floating3DFireFriendsButton';
 import { GlobalPortfolioErrorBoundary } from './components/vfx/GlobalPortfolioErrorBoundary';
+
+// Lazy-loaded Modals (loaded on-demand only when opened to reduce initial bundle)
+const FamilyVaultModal = React.lazy(() =>
+  import('./components/family/FamilyVaultModal').then((m) => ({ default: m.FamilyVaultModal }))
+);
+const AdminModal = React.lazy(() =>
+  import('./components/admin/AdminModal').then((m) => ({ default: m.AdminModal }))
+);
 
 // Lazy-loaded Friends Universe (loaded strictly on button tap to protect portfolio speed)
 const FriendsUniverse = React.lazy(() => import('./friends/FriendsUniverse'));
@@ -177,10 +183,16 @@ const MainPortfolio: React.FC = () => {
       onTouchStartCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
+      onTouchMoveCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
       onTouchEndCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
       onPointerDownCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onScrollCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
       onClickCapture={() => {
@@ -276,17 +288,24 @@ const MainPortfolio: React.FC = () => {
       {/* Footer with Admin & Social Access */}
       <Footer onOpenAdmin={() => setIsAdminOpen(true)} />
 
-      {/* Floating Modals */}
+      {/* Floating Modals (Loaded on-demand only when triggered) */}
+      {isFamilyVaultOpen && (
+        <React.Suspense fallback={null}>
+          <FamilyVaultModal
+            isOpen={isFamilyVaultOpen}
+            onClose={() => setIsFamilyVaultOpen(false)}
+          />
+        </React.Suspense>
+      )}
 
-      <FamilyVaultModal
-        isOpen={isFamilyVaultOpen}
-        onClose={() => setIsFamilyVaultOpen(false)}
-      />
-
-      <AdminModal
-        isOpen={isAdminOpen}
-        onClose={() => setIsAdminOpen(false)}
-      />
+      {isAdminOpen && (
+        <React.Suspense fallback={null}>
+          <AdminModal
+            isOpen={isAdminOpen}
+            onClose={() => setIsAdminOpen(false)}
+          />
+        </React.Suspense>
+      )}
 
       {/* 3D Fiery Floating Friends Button (Bottom Screen Magnet) */}
       <Floating3DFireFriendsButton
@@ -315,7 +334,15 @@ const MainPortfolio: React.FC = () => {
         >
           <React.Suspense
             fallback={
-              <div className="fixed inset-0 z-50 bg-[#0A0D14] flex flex-col items-center justify-center p-6 text-center select-none">
+              <div
+                onTouchStartCapture={() => (window as any).__startBackgroundMusic?.()}
+                onTouchMoveCapture={() => (window as any).__startBackgroundMusic?.()}
+                onTouchEndCapture={() => (window as any).__startBackgroundMusic?.()}
+                onPointerDownCapture={() => (window as any).__startBackgroundMusic?.()}
+                onScrollCapture={() => (window as any).__startBackgroundMusic?.()}
+                onClickCapture={() => (window as any).__startBackgroundMusic?.()}
+                className="fixed inset-0 z-50 bg-[#0A0D14] flex flex-col items-center justify-center p-6 text-center select-none"
+              >
                 <div className="absolute w-72 h-72 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none animate-pulse" />
                 <div className="relative z-10 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#0d1527]/90 border border-[#00f2fe]/30 shadow-[0_0_15px_rgba(0,242,254,0.15)] mb-4">
                   <span className="relative flex h-2 w-2">

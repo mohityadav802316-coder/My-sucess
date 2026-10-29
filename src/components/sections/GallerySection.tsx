@@ -219,6 +219,7 @@ export const GallerySection: React.FC = () => {
                         alt={item.title}
                         className="w-full h-full object-cover object-center transition-transform duration-700 hover:scale-110"
                         loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <Camera className="w-10 h-10 text-amber-400/40" />

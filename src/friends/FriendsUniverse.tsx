@@ -286,10 +286,16 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
       onTouchStartCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
+      onTouchMoveCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
       onTouchEndCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
       onPointerDownCapture={() => {
+        (window as any).__startBackgroundMusic?.();
+      }}
+      onScrollCapture={() => {
         (window as any).__startBackgroundMusic?.();
       }}
       onClickCapture={() => {
@@ -425,7 +431,15 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
 
       {/* Personalized Welcome Loading Screen when opening friend profile */}
       {activeProfileId && !currentSelectedFriend && (
-        <div className="fixed inset-0 z-50 bg-[#030611]/95 backdrop-blur-2xl flex flex-col items-center justify-center text-center p-6 gap-5">
+        <div
+          onTouchStartCapture={() => (window as any).__startBackgroundMusic?.()}
+          onTouchMoveCapture={() => (window as any).__startBackgroundMusic?.()}
+          onTouchEndCapture={() => (window as any).__startBackgroundMusic?.()}
+          onPointerDownCapture={() => (window as any).__startBackgroundMusic?.()}
+          onScrollCapture={() => (window as any).__startBackgroundMusic?.()}
+          onClickCapture={() => (window as any).__startBackgroundMusic?.()}
+          className="fixed inset-0 z-50 bg-[#030611]/95 backdrop-blur-2xl flex flex-col items-center justify-center text-center p-6 gap-5"
+        >
           <div className="relative flex items-center justify-center w-24 h-24">
             <div
               className="absolute inset-0 rounded-full border-2 border-dashed border-cyan-400 animate-spin"

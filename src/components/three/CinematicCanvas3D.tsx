@@ -272,9 +272,15 @@ export const CinematicCanvas3D: React.FC<CinematicCanvas3DProps> = ({ isPaused =
     let animId: number;
     const clock = new THREE.Clock();
 
+    let isDocumentVisible = !document.hidden;
+    const handleVisibility = () => {
+      isDocumentVisible = !document.hidden;
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     const animate = () => {
       animId = requestAnimationFrame(animate);
-      if (isPausedRef.current) return;
+      if (isPausedRef.current || !isDocumentVisible) return;
       const elapsed = clock.getElapsedTime();
 
       if (!prefersReducedMotion) {
@@ -364,6 +370,7 @@ export const CinematicCanvas3D: React.FC<CinematicCanvas3DProps> = ({ isPaused =
       cancelAnimationFrame(animId);
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('visibilitychange', handleVisibility);
       particleGeo.dispose();
       particleMat.dispose();
       particleTexture.dispose();

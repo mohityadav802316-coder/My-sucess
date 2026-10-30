@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Friend, resolveImageUrl } from '../data/friends';
-import { Search, MessageCircle } from 'lucide-react';
+import { Friend, resolveImageUrl, isFriendPublic } from '../data/friends';
+import { Search, MessageCircle, Plus } from 'lucide-react';
 
 interface AllFriendsListProps {
   friends: Friend[];
   onOpenProfile: (id: string) => void;
+  onOpenCreateProfile?: () => void;
   isAdmin?: boolean;
   isLoading?: boolean;
 }
@@ -12,16 +13,22 @@ interface AllFriendsListProps {
 export const AllFriendsList: React.FC<AllFriendsListProps> = ({
   friends,
   onOpenProfile,
+  onOpenCreateProfile,
   isAdmin = false,
   isLoading = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredFriends = useMemo(() => {
+  // Public friends only (defense in depth against hidden/unlisted profiles)
+  const publicFriends = useMemo(() => {
     if (!friends) return [];
-    if (!searchQuery.trim()) return friends;
+    return friends.filter((f) => isFriendPublic(f));
+  }, [friends]);
+
+  const filteredFriends = useMemo(() => {
+    if (!searchQuery.trim()) return publicFriends;
     const q = searchQuery.toLowerCase().trim();
-    return friends.filter(
+    return publicFriends.filter(
       (f) =>
         f.name.toLowerCase().includes(q) ||
         (f.fullName && f.fullName.toLowerCase().includes(q)) ||
@@ -30,7 +37,7 @@ export const AllFriendsList: React.FC<AllFriendsListProps> = ({
         (f.nickname && f.nickname.toLowerCase().includes(q)) ||
         (f.role && f.role.toLowerCase().includes(q))
     );
-  }, [friends, searchQuery]);
+  }, [publicFriends, searchQuery]);
 
   return (
     <div className="w-full max-w-xl mx-auto my-2 px-2 flex flex-col gap-3">
@@ -86,6 +93,43 @@ export const AllFriendsList: React.FC<AllFriendsListProps> = ({
         </div>
       ) : (
         <div className="flex flex-col gap-2.5 w-full" role="list">
+          {/* Quick Create Your Profile Card */}
+          {onOpenCreateProfile && !searchQuery && (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                (window as any).__startBackgroundMusic?.();
+                onOpenCreateProfile();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onOpenCreateProfile();
+                }
+              }}
+              className="w-full flex items-center gap-3.5 p-3 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-purple-950/30 to-pink-950/20 backdrop-blur-sm border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-950/60 transition-all duration-200 cursor-pointer text-left group select-none shadow-[0_0_15px_rgba(0,242,254,0.1)] hover:shadow-[0_0_20px_rgba(0,242,254,0.25)]"
+            >
+              <div className="w-12 h-12 rounded-full border-2 border-dashed border-cyan-400/80 bg-cyan-950/60 flex items-center justify-center text-cyan-300 group-hover:scale-105 group-hover:bg-cyan-500/20 transition-all shrink-0">
+                <Plus className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div className="flex flex-col flex-grow min-w-0">
+                <span className="font-bold text-sm text-cyan-200 group-hover:text-white flex items-center gap-2">
+                  <span>+ Create Your Profile</span>
+                  <span className="text-[10px] bg-gradient-to-r from-cyan-400 to-purple-500 text-slate-950 px-1.5 py-0.2 rounded font-extrabold uppercase">
+                    Join
+                  </span>
+                </span>
+                <span className="text-xs text-slate-400 truncate">
+                  नेटवर्क में जुड़ें • अपनी 3D Cyberpunk प्रोफ़ाइल बनाएं
+                </span>
+              </div>
+              <span className="text-cyan-400 group-hover:translate-x-0.5 transition-transform text-sm font-bold pr-1">
+                →
+              </span>
+            </div>
+          )}
+
           {filteredFriends.map((friend) => {
             const isSquadMember = (friend.cats || friend.categories || []).includes('squad');
             const accent = friend.accent || (isSquadMember ? '#FFB53D' : '#00F2FE');

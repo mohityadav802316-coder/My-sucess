@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Friend, resolveImageUrl } from '../data/friends';
+import { useFriendsConfig } from '../data/repository';
+import { getFriendShareUrl } from '../utils/shareUrl';
 import { sound } from '../../components/audio/SoundEffects';
 import { getSocialBrandMeta } from '../utils/socialUtils';
 import {
@@ -30,12 +32,15 @@ import {
   BadgeCheck,
   Flame,
   Copy,
+  Edit3,
 } from 'lucide-react';
 
 interface FriendHeroProfile3DProps {
   friend: Friend;
   onClose: () => void;
   onOpenLightbox: (imageUrl: string) => void;
+  onOpenEditProfile?: () => void;
+  onOpenCreateProfile?: () => void;
   fxLevel?: 'high' | 'low' | 'minimal';
 }
 
@@ -56,8 +61,11 @@ export const FriendHeroProfile3D: React.FC<FriendHeroProfile3DProps> = ({
   friend,
   onClose,
   onOpenLightbox,
+  onOpenEditProfile,
+  onOpenCreateProfile,
   fxLevel = 'high',
 }) => {
+  const { settings } = useFriendsConfig();
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedFfUid, setCopiedFfUid] = useState(false);
   const [isAboutExpanded, setIsAboutExpanded] = useState(false);
@@ -202,8 +210,7 @@ export const FriendHeroProfile3D: React.FC<FriendHeroProfile3DProps> = ({
 
   const handleShare = async () => {
     sound.playClick();
-    const base = window.location.origin + window.location.pathname.replace(/\/+$/, '');
-    const shareUrl = `${base}/?friend=${encodeURIComponent(friend.id)}`;
+    const shareUrl = getFriendShareUrl(friend.id, settings.publicSiteUrl);
     const shareTitle = `${friend.name} - CyberMohit Friend Profile`;
     const shareText = `Check out ${friend.name}'s Cyberpunk Profile on CyberMohit AI! 🔥`;
 
@@ -229,8 +236,7 @@ export const FriendHeroProfile3D: React.FC<FriendHeroProfile3DProps> = ({
 
   const handleCopyLinkOnly = async () => {
     sound.playClick();
-    const base = window.location.origin + window.location.pathname.replace(/\/+$/, '');
-    const shareUrl = `${base}/?friend=${encodeURIComponent(friend.id)}`;
+    const shareUrl = getFriendShareUrl(friend.id, settings.publicSiteUrl);
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopiedLink(true);
@@ -430,15 +436,35 @@ export const FriendHeroProfile3D: React.FC<FriendHeroProfile3DProps> = ({
             <span className="font-mono">Friends</span>
           </button>
 
+          {/* Edit Profile Button */}
+          {onOpenEditProfile && (
+            <button
+              type="button"
+              onClick={() => {
+                sound.playClick();
+                onOpenEditProfile();
+              }}
+              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-amber-200 border border-amber-500/40 hover:border-amber-400 text-xs font-semibold shadow-[0_0_12px_rgba(245,158,11,0.25)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all cursor-pointer active:scale-95"
+              title="प्रोफ़ाइल अपडेट अनुरोध भेजें"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-mono">Edit Profile</span>
+            </button>
+          )}
+
           {/* Create Profile Button */}
           <button
             type="button"
             onClick={() => {
               sound.playClick();
-              onClose();
+              if (onOpenCreateProfile) {
+                onOpenCreateProfile();
+              } else {
+                onClose();
+              }
             }}
             className="flex items-center gap-1.5 px-3.5 sm:px-5 py-1.5 rounded-full bg-[#110d29]/80 hover:bg-purple-950/60 text-purple-300 hover:text-white border border-purple-500/40 hover:border-purple-400 text-xs font-semibold shadow-[0_0_12px_rgba(155,92,255,0.2)] hover:shadow-[0_0_20px_rgba(155,92,255,0.4)] transition-all cursor-pointer active:scale-95"
-            title="प्रोफ़ाइल जोड़ें"
+            title="नई प्रोफ़ाइल बनाएं"
           >
             <Plus className="w-3.5 h-3.5 text-purple-400" />
             <span className="hidden sm:inline font-mono">Create Profile</span>

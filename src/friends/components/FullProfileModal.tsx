@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Friend, resolveImageUrl } from '../data/friends';
 import { HoloRing3D } from './HoloRing3D';
 import { useFriendsConfig } from '../data/repository';
+import { getFriendShareUrl } from '../utils/shareUrl';
 import { Share2, Check, ArrowLeft, MessageCircle, ExternalLink } from 'lucide-react';
 import { getSocialBrandMeta } from '../utils/socialUtils';
 
@@ -93,8 +94,7 @@ export const FullProfileModal: React.FC<FullProfileModalProps> = ({
 
   const handleShare = async () => {
     if (!friend) return;
-    const base = window.location.origin + window.location.pathname.replace(/\/+$/, '');
-    const shareUrl = `${base}/?friend=${encodeURIComponent(friend.id)}`;
+    const shareUrl = getFriendShareUrl(friend.id, settings.publicSiteUrl);
     const shareTitle = `${friend.name} - Friends Universe 3D`;
     const shareText = `Check out ${friend.name} on Friends Universe 3D! 🔥`;
 

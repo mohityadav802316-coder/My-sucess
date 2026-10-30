@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { Friend, CategoryKey, DEFAULT_CATEGORIES, resolveImageUrl } from '../data/friends';
+import { Friend, CategoryKey, DEFAULT_CATEGORIES, resolveImageUrl, isFriendPublic } from '../data/friends';
 import { HoloRing3D } from './HoloRing3D';
 import { FXLevel } from './BackgroundUniverse3D';
 import { useFriendsConfig } from '../data/repository';

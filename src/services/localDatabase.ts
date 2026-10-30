@@ -50,7 +50,7 @@ class LocalDatabaseEngine {
       contact: {
         email: 'mohityadav802316@gmail.com',
         githubUrl: 'https://github.com',
-        whatsappNumber: '+918023160000',
+        whatsappNumber: '+919153086540',
         instagramUrl: 'https://instagram.com/mohityadav',
         location: 'Bihar, India',
         locationHi: 'बिहार, भारत',

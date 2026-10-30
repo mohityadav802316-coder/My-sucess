@@ -14,8 +14,17 @@ import {
   friendsRepository,
   useFriends,
   useFriendsConfig,
+  useFriendRequests,
 } from '../../friends/data/repository';
+import { AdminFriendRequestsManager } from './AdminFriendRequestsManager';
 import { FullProfileModal } from '../../friends/components/FullProfileModal';
+import {
+  getFriendShareUrl,
+  copyFriendShareUrl,
+  isAiStudioDevUrl,
+  setStoredPublicSiteUrl,
+  getStoredPublicSiteUrl,
+} from '../../friends/utils/shareUrl';
 import {
   Users,
   Plus,
@@ -43,6 +52,7 @@ import {
   RotateCw,
   MessageCircle,
   Phone,
+  Globe,
 } from 'lucide-react';
 
 const PRESET_ACCENT_COLORS = [
@@ -58,8 +68,14 @@ const PRESET_ACCENT_COLORS = [
 
 export const AdminFriendsManager: React.FC = () => {
   const { mode } = useLanguage();
-  const { friends, isLoading, refetch } = useFriends('all');
+  const { friends, isLoading, refetch } = useFriends('all', { includeUnlisted: true });
   const { settings } = useFriendsConfig();
+  const { requests, refetch: refetchRequests } = useFriendRequests();
+
+  const [adminSection, setAdminSection] = useState<'friends' | 'requests'>('friends');
+  const pendingRequestsCount = useMemo(() => {
+    return requests.filter((r) => r.status === 'pending').length;
+  }, [requests]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -93,6 +109,7 @@ export const AdminFriendsManager: React.FC = () => {
   const [formRole, setFormRole] = useState('');
   const [formWhatsapp, setFormWhatsapp] = useState('');
   const [formIsVisible, setFormIsVisible] = useState(true);
+  const [formIsUnlisted, setFormIsUnlisted] = useState(false);
   const [formOrder, setFormOrder] = useState(1);
 
   // Additional Profile Details
@@ -191,6 +208,7 @@ export const AdminFriendsManager: React.FC = () => {
     setFormRole('');
     setFormWhatsapp('');
     setFormIsVisible(true);
+    setFormIsUnlisted(false);
     setFormOrder(friends.length + 1);
 
     setFormInstagram('');
@@ -260,6 +278,7 @@ export const AdminFriendsManager: React.FC = () => {
     setFormRole(f.role || '');
     setFormWhatsapp(f.whatsapp || '');
     setFormIsVisible(f.isVisible !== false);
+    setFormIsUnlisted(f.isUnlisted === true);
     setFormOrder(f.order || 1);
 
     setFormInstagram(f.instagram || '');
@@ -369,6 +388,81 @@ export const AdminFriendsManager: React.FC = () => {
     } catch (err: any) {
       sound.playAlert();
       showStatus(`अपडेट विफल: ${err.message}`, 'error');
+    }
+  };
+
+  // Toggle Unlisted / Hidden status directly from list
+  const handleToggleUnlisted = async (f: Friend) => {
+    sound.playClick();
+    const newUnlisted = !f.isUnlisted;
+    try {
+      await friendsRepository.update(f.id, {
+        isUnlisted: newUnlisted,
+        listingVisibility: newUnlisted ? 'hidden' : 'normal',
+        adminCategory: newUnlisted ? 'hidden' : 'normal',
+      });
+      showStatus(
+        `${f.name} को ${newUnlisted ? 'Hidden / Unlisted Friend' : 'Normal Public Friend'} में बदला गया!`
+      );
+      refetch();
+    } catch (err: any) {
+      sound.playAlert();
+      showStatus(`अपडेट विफल: ${err.message}`, 'error');
+    }
+  };
+
+  // Configure public domain / Vercel URL
+  const handleSetPublicSiteUrl = async () => {
+    sound.playClick();
+    const current = settings.publicSiteUrl || getStoredPublicSiteUrl() || '';
+    const entered = window.prompt(
+      '🌐 अपनी लाइव Vercel वेबसाइट का URL डालें (जैसे https://cybermohit.vercel.app):',
+      current || 'https://'
+    );
+    if (entered !== null) {
+      const clean = entered.trim().replace(/\/+$/, '');
+      setStoredPublicSiteUrl(clean);
+      try {
+        await friendsRepository.updateSettings({ publicSiteUrl: clean });
+        showStatus('पब्लिक वेबसाइट डोमेन सफलतापूर्वक सेव हो गया!');
+        sound.playSuccess();
+      } catch (err: any) {
+        showStatus(`डोमेन सेव करने में त्रुटि: ${err.message}`, 'error');
+      }
+    }
+  };
+
+  // Copy Direct Public Share Link
+  const handleCopyShareLink = async (f: Friend) => {
+    sound.playClick();
+    const effectiveBase = settings.publicSiteUrl || getStoredPublicSiteUrl();
+
+    // If running inside AI Studio dev and no public/Vercel URL configured yet:
+    if (isAiStudioDevUrl() && !effectiveBase) {
+      const enteredUrl = window.prompt(
+        `🌐 सार्वजनिक शेयर लिंक सेटिंग (Public Share URL):\n\nआप अभी AI Studio के प्राइवेट डेवलपमेंट मोड में हैं। अगर आप सीधे यह लिंक भेजेंगे तो Google दूसरों से AI Studio लॉगिन माँगेगा।\n\nकृपया अपनी लाइव Vercel वेबसाइट का URL डालें (जैसे https://cybermohit.vercel.app या आपका Vercel डोमेन):`,
+        'https://'
+      );
+      if (enteredUrl && enteredUrl.trim().startsWith('http')) {
+        const clean = enteredUrl.trim().replace(/\/+$/, '');
+        setStoredPublicSiteUrl(clean);
+        try {
+          await friendsRepository.updateSettings({ publicSiteUrl: clean });
+        } catch {}
+        const finalUrl = getFriendShareUrl(f.id, clean);
+        await navigator.clipboard.writeText(finalUrl);
+        showStatus(`सार्वजनिक लिंक कॉपी किया गया: ${finalUrl}`);
+        sound.playSuccess();
+        return;
+      }
+    }
+
+    const res = await copyFriendShareUrl(f.id, settings.publicSiteUrl);
+    if (res.success) {
+      sound.playSuccess();
+      showStatus(`"${f.name}" का सार्वजनिक लिंक कॉपी हो गया!`);
+    } else {
+      showStatus('लिंक कॉपी नहीं हो सका।', 'error');
     }
   };
 
@@ -696,6 +790,9 @@ export const AdminFriendsManager: React.FC = () => {
         accent: formAccent,
         order: Number(formOrder) || 1,
         isVisible: formIsVisible,
+        isUnlisted: formIsUnlisted,
+        listingVisibility: formIsUnlisted ? 'hidden' : 'normal',
+        adminCategory: formIsUnlisted ? 'hidden' : 'normal',
         online: null, // real online tracking not manual
       };
 
@@ -789,6 +886,84 @@ export const AdminFriendsManager: React.FC = () => {
           <span>{statusMessage.text}</span>
         </div>
       )}
+
+      {/* Main Section Navigation Switch: All Friends vs Profile Requests */}
+      <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+        <button
+          type="button"
+          onClick={() => {
+            sound.playClick();
+            setAdminSection('friends');
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            adminSection === 'friends'
+              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_12px_rgba(0,242,254,0.2)]'
+              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Users className="w-4 h-4 text-cyan-400" />
+          <span>सभी दोस्त (All Friends)</span>
+          <span className="px-2 py-0.5 rounded-full bg-cyan-500/30 text-cyan-200 text-[10px] font-mono font-bold">
+            {friends.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            sound.playClick();
+            setAdminSection('requests');
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            adminSection === 'requests'
+              ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50 shadow-[0_0_12px_rgba(155,92,255,0.2)]'
+              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-purple-400" />
+          <span>प्रोफ़ाइल अनुरोध (Profile Requests)</span>
+          {pendingRequestsCount > 0 ? (
+            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-mono font-extrabold animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+              {pendingRequestsCount} PENDING
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[10px] font-mono">
+              {requests.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* RENDER CONDITIONAL SECTION */}
+      {adminSection === 'requests' ? (
+        <AdminFriendRequestsManager />
+      ) : (
+        <>
+
+      {/* Public Share Domain Bar (Vercel / Production Site URL) */}
+      <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+            <Globe className="w-4 h-4" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold text-slate-200">
+              सार्वजनिक वेबसाइट डोमेन (Public Vercel Domain)
+            </span>
+            <span className="text-[11px] text-slate-400 font-mono">
+              {settings.publicSiteUrl || getStoredPublicSiteUrl() || 'सेट नहीं है (वर्तमान डोमेन उपयोग होगा)'}
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={handleSetPublicSiteUrl}
+          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 hover:border-cyan-500/50 text-xs font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+        >
+          <Edit2 className="w-3.5 h-3.5" />
+          <span>{settings.publicSiteUrl ? 'डोमेन बदलें (Change)' : 'Vercel लिंक सेट करें'}</span>
+        </button>
+      </div>
 
       {/* Filter and Search Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -901,6 +1076,14 @@ export const AdminFriendsManager: React.FC = () => {
                           Hidden
                         </span>
                       )}
+                      {f.isUnlisted && (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-purple-950/70 text-purple-300 border border-purple-800 font-mono"
+                          title="Unlisted: केवल डायरेक्ट लिंक से खुलेगा, पब्लिक लिस्ट में नहीं"
+                        >
+                          Unlisted Friend
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 flex-wrap">
                       <span className="font-mono text-[11px] text-cyan-400/80">
@@ -935,6 +1118,32 @@ export const AdminFriendsManager: React.FC = () => {
                     {f.isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                   </button>
 
+                  {/* Unlisted / Hidden Toggle */}
+                  <button
+                    onClick={() => handleToggleUnlisted(f)}
+                    className={`p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
+                      f.isUnlisted
+                        ? 'bg-purple-950/60 text-purple-300 border-purple-800 hover:bg-purple-900/80'
+                        : 'bg-slate-950 text-slate-500 hover:text-purple-300 border-slate-800'
+                    }`}
+                    title={
+                      f.isUnlisted
+                        ? 'Hidden/Unlisted Friend (Normal Public बनाने के लिए क्लिक करें)'
+                        : 'Normal Friend (Hidden/Unlisted बनाने के लिए क्लिक करें)'
+                    }
+                  >
+                    <Lock className="w-4 h-4" />
+                  </button>
+
+                  {/* Copy Direct Public Share Link */}
+                  <button
+                    onClick={() => handleCopyShareLink(f)}
+                    className="p-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-emerald-300 cursor-pointer transition-colors"
+                    title="सार्वजनिक शेयर लिंक कॉपी करें (Copy Public Link)"
+                  >
+                    <LinkIcon className="w-4 h-4" />
+                  </button>
+
                   {/* Visitor Preview Button */}
                   <button
                     onClick={() => setPreviewFriend(f)}
@@ -967,6 +1176,8 @@ export const AdminFriendsManager: React.FC = () => {
           })
         )}
       </div>
+      </>
+      )}
 
       {/* =========================================================================
           ADD / EDIT FRIEND MODAL (Comprehensive Form)
@@ -1195,7 +1406,7 @@ export const AdminFriendsManager: React.FC = () => {
                     })}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                   {/* Order */}
                   <div>
                     <label className="block text-[11px] font-mono text-slate-400 mb-1">
@@ -1225,6 +1436,22 @@ export const AdminFriendsManager: React.FC = () => {
                         className="rounded border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer w-4 h-4"
                       />
                       <span className="font-mono text-[11px]">वेबसाइट पर प्रकाशित करें (Visible on Website)</span>
+                    </label>
+                  </div>
+
+                  {/* Unlisted / Hidden Friend Switch */}
+                  <div className="flex flex-col justify-end">
+                    <label className="flex items-center gap-2 text-xs text-purple-300 cursor-pointer py-2">
+                      <input
+                        type="checkbox"
+                        checked={formIsUnlisted}
+                        onChange={(e) => {
+                          setFormIsUnlisted(e.target.checked);
+                          setIsDirty(true);
+                        }}
+                        className="rounded border-purple-700 text-purple-500 focus:ring-0 cursor-pointer w-4 h-4"
+                      />
+                      <span className="font-mono text-[11px]">Hidden Friend (केवल डायरेक्ट लिंक से खुलेगा)</span>
                     </label>
                   </div>
                 </div>

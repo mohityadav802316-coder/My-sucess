@@ -49,14 +49,14 @@ export const ContactSection: React.FC = () => {
     locationHi: 'बिहार, भारत',
     responseAvailability: 'Open for learning collaborations and tech discussions',
     responseAvailabilityHi: 'तकनीकी सहयोग और चर्चा के लिए हमेशा उपलब्ध',
-    whatsappNumber: '+918023160000',
+    whatsappNumber: '+919153086540',
     instagramUrl: 'https://instagram.com/mohityadav',
     phoneNumber: '',
     isPhonePublic: false,
   };
 
   const officialEmail = contactData.email || 'mohityadav802316@gmail.com';
-  const whatsappNumber = contactData.whatsappNumber || '+918023160000';
+  const whatsappNumber = contactData.whatsappNumber || '+919153086540';
   const instagramUrl = contactData.instagramUrl || 'https://instagram.com/mohityadav';
   const phoneNumber = contactData.phoneNumber || '';
   const isPhonePublic = contactData.isPhonePublic ?? false;

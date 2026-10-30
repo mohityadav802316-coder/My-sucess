@@ -12,9 +12,10 @@ import { BackgroundUniverse3D, FXLevel } from './components/BackgroundUniverse3D
 import { FXToggle } from './components/FXToggle';
 import { FriendsWelcomeLoader } from './components/FriendsWelcomeLoader';
 import { SharedProfilePreview } from './components/SharedProfilePreview';
+import { CreateOrEditProfileModal } from './components/CreateOrEditProfileModal';
 import { initTilt } from './utils/tiltManager';
 import { isUserAdmin, auth } from '../firebase';
-import { ArrowLeft, X, AlertTriangle, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, X, AlertTriangle, RefreshCw, Sparkles, Plus } from 'lucide-react';
 
 export const getSharedFriendIdFromUrl = (): string | null => {
   if (typeof window === 'undefined') return null;
@@ -79,6 +80,10 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
 
   // Active lightbox image preview
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
+
+  // Profile Create & Edit Request Modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // FX Level: high / low / minimal (honors portfolio Low Effects)
   const [fxLevel, setFxLevel] = useState<FXLevel>(() => {
@@ -380,14 +385,28 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
           </div>
         </header>
 
-        {/* Title */}
-        <div className="text-center my-1 select-none">
+        {/* Title & Create Profile Action */}
+        <div className="text-center my-1 select-none flex flex-col items-center">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-[0.22em] text-[#00f2fe] text-glow-cyan uppercase font-mono">
             {settings.labels.allFriendsTitleHi || 'Friends Universe'}
           </h1>
           <p className="text-xs sm:text-sm text-[#8fa3bf] mt-1 font-medium">
             {settings.labels.subtitleHi || '3D होलोग्राफिक नेटवर्क • इंटरएक्टिव डॉक'}
           </p>
+
+          {/* Premium + Create Your Profile Button */}
+          <button
+            type="button"
+            onClick={() => {
+              (window as any).__startBackgroundMusic?.();
+              setIsCreateModalOpen(true);
+            }}
+            className="mt-2.5 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-pink-500/20 hover:from-cyan-500/30 hover:to-pink-500/30 text-white border border-cyan-400/50 hover:border-cyan-300 shadow-[0_0_15px_rgba(0,242,254,0.3)] hover:shadow-[0_0_25px_rgba(0,242,254,0.5)] transition-all cursor-pointer text-xs font-bold active:scale-95 group"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-300 animate-pulse group-hover:rotate-12 transition-transform" />
+            <span className="font-mono text-cyan-200 group-hover:text-white">+ Create Your Profile</span>
+            <span className="text-[10px] bg-cyan-400 text-slate-950 px-1.5 py-0.2 rounded font-extrabold tracking-wider">NEW</span>
+          </button>
         </div>
 
         {/* Category Circular Tabs Bar */}
@@ -439,6 +458,7 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
             <AllFriendsList
               friends={mainFriends}
               onOpenProfile={(id) => handleOpenProfile(id, true)}
+              onOpenCreateProfile={() => setIsCreateModalOpen(true)}
               isAdmin={isAdmin}
               isLoading={isMainLoading}
             />
@@ -523,6 +543,8 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
           friend={currentSelectedFriend}
           onClose={() => handleCloseProfile(true)}
           onOpenLightbox={(img) => setLightboxImageUrl(img)}
+          onOpenEditProfile={() => setIsEditModalOpen(true)}
+          onOpenCreateProfile={() => setIsCreateModalOpen(true)}
           fxLevel={fxLevel}
         />
       )}
@@ -531,6 +553,19 @@ export const FriendsUniverse: React.FC<FriendsUniverseProps> = ({
       <LightboxModal
         imageUrl={lightboxImageUrl}
         onClose={() => setLightboxImageUrl(null)}
+      />
+
+      {/* Profile Creation & Update Request Modal */}
+      <CreateOrEditProfileModal
+        isOpen={isCreateModalOpen}
+        mode="create"
+        onClose={() => setIsCreateModalOpen(false)}
+      />
+      <CreateOrEditProfileModal
+        isOpen={isEditModalOpen}
+        mode="edit"
+        friend={currentSelectedFriend}
+        onClose={() => setIsEditModalOpen(false)}
       />
     </div>
   );

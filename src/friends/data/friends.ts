@@ -89,6 +89,9 @@ export interface Friend {
   online: boolean | null; // null by default - real system not linked
   order: number;
   isVisible: boolean;
+  isUnlisted?: boolean; // When true, hidden from public category tabs and all-friends listing, but accessible directly via ?friend=ID
+  listingVisibility?: 'normal' | 'hidden';
+  adminCategory?: 'normal' | 'hidden';
   createdAt?: any;
   updatedAt?: any;
   isDemo?: boolean;
@@ -108,6 +111,37 @@ export interface Friend {
   isVerified?: boolean;
   instagram?: string | null;
   visibilitySettings?: FriendVisibilitySettings;
+}
+
+/**
+ * Determines if a friend profile is an approved Normal friend eligible for public listing.
+ * Returns false if the profile is Hidden, Unlisted, or marked not visible.
+ */
+export function isFriendPublic(friend: Friend | null | undefined): boolean {
+  if (!friend) return false;
+  if (friend.isUnlisted === true) return false;
+  if (friend.listingVisibility === 'hidden') return false;
+  if (friend.adminCategory === 'hidden') return false;
+  if (friend.isVisible === false) return false;
+  const cats = friend.categories || friend.cats || [];
+  if (cats.includes('hidden') || cats.includes('unlisted')) return false;
+  return true;
+}
+
+export interface FriendRequest {
+  id: string; // e.g. REQ-NEW-timestamp or REQ-UPD-timestamp
+  type: 'new_profile' | 'profile_update';
+  profileId?: string; // Target friend ID if update
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: any;
+  reviewedAt?: any;
+  applicantName: string;
+  applicantContact?: string;
+  profileData: Partial<Friend>;
+  originalData?: Partial<Friend>;
+  adminCategory?: 'normal' | 'hidden';
+  assignedCategories?: string[];
+  adminNotes?: string;
 }
 
 export interface FriendVisibilitySettings {
@@ -136,6 +170,7 @@ export interface FriendsPrivateData {
 }
 
 export interface FriendsConfigSettings {
+  publicSiteUrl?: string; // Production / Vercel public URL (e.g. "https://your-site.vercel.app")
   categories: CategoryItem[];
   features: {
     viewMore: boolean;
@@ -187,6 +222,7 @@ export const DEFAULT_CATEGORIES: CategoryItem[] = [
 ];
 
 export const DEFAULT_FRIENDS_SETTINGS: FriendsConfigSettings = {
+  publicSiteUrl: '',
   categories: DEFAULT_CATEGORIES,
   features: {
     viewMore: true,

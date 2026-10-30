@@ -117,6 +117,18 @@ service cloud.firestore {
       allow write: if isAdmin() && isValidId(configId);
     }
 
+    // 7.1 Friend Creation & Edit Requests ('friendRequests' collection)
+    match /friendRequests/{requestId} {
+      // Anyone can submit a profile request in pending status with valid structure
+      allow create: if isValidId(requestId) &&
+        request.resource.data.status == 'pending' &&
+        (request.resource.data.type in ['new_profile', 'profile_update']);
+      // Allow read so visitors can verify duplicate pending requests & admins can view all
+      allow read: if true;
+      // Admin only can approve, reject, update or delete
+      allow update, delete: if isAdmin() && isValidId(requestId);
+    }
+
     // 8. System Credentials & Master Security Metadata (Strictly Admin only - NEVER public)
     match /system_credentials/{docId} {
       allow read, write: if isAdmin() && isValidId(docId);

@@ -29,7 +29,7 @@ export const AdminContactManager: React.FC = () => {
     locationHi: contact?.locationHi || 'बिहार, भारत',
     responseAvailability: contact?.responseAvailability || 'Open for learning collaborations and tech discussions',
     responseAvailabilityHi: contact?.responseAvailabilityHi || 'तकनीकी सहयोग और चर्चा के लिए हमेशा उपलब्ध',
-    whatsappNumber: contact?.whatsappNumber || '+918023160000',
+    whatsappNumber: contact?.whatsappNumber || '+919153086540',
     instagramUrl: contact?.instagramUrl || 'https://instagram.com/mohityadav',
     phoneNumber: contact?.phoneNumber || '',
     isPhonePublic: contact?.isPhonePublic ?? false,
@@ -47,7 +47,7 @@ export const AdminContactManager: React.FC = () => {
         locationHi: siteSettings.contact.locationHi || 'बिहार, भारत',
         responseAvailability: siteSettings.contact.responseAvailability || 'Open for learning collaborations and tech discussions',
         responseAvailabilityHi: siteSettings.contact.responseAvailabilityHi || 'तकनीकी सहयोग और चर्चा के लिए हमेशा उपलब्ध',
-        whatsappNumber: siteSettings.contact.whatsappNumber || '+918023160000',
+        whatsappNumber: siteSettings.contact.whatsappNumber || '+919153086540',
         instagramUrl: siteSettings.contact.instagramUrl || 'https://instagram.com/mohityadav',
         phoneNumber: siteSettings.contact.phoneNumber || '',
         isPhonePublic: siteSettings.contact.isPhonePublic ?? false,
@@ -123,7 +123,7 @@ export const AdminContactManager: React.FC = () => {
             value={formData.whatsappNumber || ''}
             onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
             className="w-full px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 focus:border-emerald-500 text-emerald-300 font-mono text-sm outline-none"
-            placeholder="+918023160000"
+            placeholder="+919153086540"
           />
           <p className="text-[10px] font-mono text-gray-500">
             Opens direct WhatsApp chat with this number when users click the button.

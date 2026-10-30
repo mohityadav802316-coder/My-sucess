@@ -3,7 +3,7 @@
  * Directly connects Friends Universe to Firestore database and Firebase Storage.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Friend,
   CategoryKey,
@@ -11,6 +11,8 @@ import {
   DEFAULT_FRIENDS_SETTINGS,
   PhotoInput,
   resolveImageUrl,
+  FriendRequest,
+  isFriendPublic,
 } from './friends';
 import {
   db,
@@ -65,9 +67,10 @@ let cacheTimestamp = cachedFriends ? Date.now() : 0;
 const CACHE_DURATION_MS = 60 * 1000; // 1 minute cache
 
 export interface FriendsRepository {
-  list(category?: CategoryKey, forceRefresh?: boolean): Promise<Friend[]>;
+  list(category?: CategoryKey, forceRefresh?: boolean, options?: { includeUnlisted?: boolean }): Promise<Friend[]>;
+  filterByCategory(list: Friend[], category?: CategoryKey, options?: { includeUnlisted?: boolean }): Friend[];
   get(id: string): Promise<Friend | null>;
-  create(friend: Omit<Friend, 'id'>, privateFields?: Record<string, any>): Promise<Friend>;
+  create(friend: Omit<Friend, 'id'>, privateFields?: Record<string, any>, customId?: string): Promise<Friend>;
   update(id: string, patch: Partial<Friend>, privateFieldsPatch?: Record<string, any>): Promise<Friend>;
   remove(id: string): Promise<boolean>;
   getPrivateData(friendId: string): Promise<Record<string, any> | null>;
@@ -75,18 +78,58 @@ export interface FriendsRepository {
   updateSettings(settings: Partial<FriendsConfigSettings>): Promise<FriendsConfigSettings>;
   uploadPhoto(file: File, friendId: string): Promise<{ url: string; path: string }>;
   deletePhoto(storagePath: string): Promise<boolean>;
+  createRequest(req: FriendRequest): Promise<void>;
+  listRequests(statusFilter?: string): Promise<FriendRequest[]>;
+  checkPendingUpdateRequest(profileId: string): Promise<FriendRequest | null>;
+  approveRequest(
+    requestId: string,
+    adminCategory?: 'normal' | 'hidden',
+    assignedCategories?: string[],
+    adminNotes?: string
+  ): Promise<Friend | null>;
+  rejectRequest(requestId: string, adminNotes?: string): Promise<void>;
+  deleteRequest(requestId: string): Promise<void>;
+}
+
+/**
+ * Recursively cleans an object to ensure no `undefined` values reach Firestore setDoc()
+ */
+export function sanitizeFirestoreData<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as any;
+  }
+  if (Array.isArray(obj)) {
+    return obj
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeFirestoreData(item)) as any;
+  }
+  if (typeof obj === 'object') {
+    // Preserve Firestore serverTimestamp and Timestamp objects
+    if ((obj as any)._methodName || typeof (obj as any).toMillis === 'function') {
+      return obj;
+    }
+    const clean: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        clean[key] = sanitizeFirestoreData(value);
+      }
+    }
+    return clean as any;
+  }
+  return obj;
 }
 
 export class FirebaseFriendsRepository implements FriendsRepository {
   private friendsCollection = 'friends';
   private privateCollection = 'friendsPrivate';
   private configCollection = 'friendsConfig';
+  private requestsCollection = 'friendRequests';
   private settingsDocId = 'settings';
 
-  async list(category?: CategoryKey, forceRefresh = false): Promise<Friend[]> {
+  async list(category?: CategoryKey, forceRefresh = false, options?: { includeUnlisted?: boolean }): Promise<Friend[]> {
     const now = Date.now();
     if (!forceRefresh && cachedFriends && now - cacheTimestamp < CACHE_DURATION_MS) {
-      return this.filterByCategory(cachedFriends, category);
+      return this.filterByCategory(cachedFriends, category, options);
     }
 
     try {
@@ -139,6 +182,9 @@ export class FirebaseFriendsRepository implements FriendsRepository {
           online: data.online ?? null,
           order: typeof data.order === 'number' ? data.order : 999,
           isVisible: data.isVisible !== false,
+          isUnlisted: data.isUnlisted === true,
+          listingVisibility: data.listingVisibility || (data.isUnlisted ? 'hidden' : 'normal'),
+          adminCategory: data.adminCategory || (data.isUnlisted ? 'hidden' : 'normal'),
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
         });
@@ -151,24 +197,24 @@ export class FirebaseFriendsRepository implements FriendsRepository {
       cacheTimestamp = now;
       saveFriendsToStorage(list);
 
-      return this.filterByCategory(list, category);
+      return this.filterByCategory(list, category, options);
     } catch (err: any) {
       console.warn('Firestore friends list warning:', err?.message || err);
       throw err;
     }
   }
 
-  private filterByCategory(list: Friend[], category?: CategoryKey): Friend[] {
-    const isAdmin = isUserAdmin(auth.currentUser);
-    const visibleList = isAdmin ? list : list.filter((f) => f.isVisible !== false);
+  filterByCategory(list: Friend[], category?: CategoryKey, options?: { includeUnlisted?: boolean }): Friend[] {
+    const includeUnlisted = options?.includeUnlisted === true;
+    const baseList = includeUnlisted ? list : list.filter((f) => isFriendPublic(f));
 
     if (!category || category === 'all') {
-      return visibleList;
+      return baseList;
     }
     if (category === 'online') {
-      return visibleList.filter((f) => f.online === true);
+      return baseList.filter((f) => f.online === true);
     }
-    return visibleList.filter((f) => {
+    return baseList.filter((f) => {
       const cats = f.categories || f.cats || [];
       return cats.includes(category);
     });
@@ -225,6 +271,9 @@ export class FirebaseFriendsRepository implements FriendsRepository {
         online: data.online ?? null,
         order: typeof data.order === 'number' ? data.order : 999,
         isVisible: data.isVisible !== false,
+        isUnlisted: data.isUnlisted === true,
+        listingVisibility: data.listingVisibility || (data.isUnlisted ? 'hidden' : 'normal'),
+        adminCategory: data.adminCategory || (data.isUnlisted ? 'hidden' : 'normal'),
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       };
@@ -234,27 +283,27 @@ export class FirebaseFriendsRepository implements FriendsRepository {
     }
   }
 
-  async create(friendData: Omit<Friend, 'id'>, privateFields?: Record<string, any>): Promise<Friend> {
-    const friendId = `fr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  async create(friendData: Omit<Friend, 'id'>, privateFields?: Record<string, any>, customId?: string): Promise<Friend> {
+    const friendId = customId || `fr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const publicDocRef = doc(db, this.friendsCollection, friendId);
 
-    const docToSave = {
+    const docToSave = sanitizeFirestoreData({
       ...friendData,
       id: friendId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    };
+    });
 
     await setDoc(publicDocRef, docToSave);
 
     // Save private fields in friendsPrivate collection if provided
     if (privateFields && Object.keys(privateFields).length > 0) {
       const privateDocRef = doc(db, this.privateCollection, friendId);
-      await setDoc(privateDocRef, {
+      await setDoc(privateDocRef, sanitizeFirestoreData({
         friendId,
         privateFields,
         updatedAt: serverTimestamp(),
-      });
+      }));
     }
 
     cachedFriends = null; // Invalidate cache
@@ -264,10 +313,10 @@ export class FirebaseFriendsRepository implements FriendsRepository {
   async update(id: string, patch: Partial<Friend>, privateFieldsPatch?: Record<string, any>): Promise<Friend> {
     const publicDocRef = doc(db, this.friendsCollection, id);
 
-    const dataToUpdate: Record<string, any> = {
+    const dataToUpdate: Record<string, any> = sanitizeFirestoreData({
       ...patch,
       updatedAt: serverTimestamp(),
-    };
+    });
     delete dataToUpdate.id;
 
     await setDoc(publicDocRef, dataToUpdate, { merge: true });
@@ -276,11 +325,11 @@ export class FirebaseFriendsRepository implements FriendsRepository {
       const privateDocRef = doc(db, this.privateCollection, id);
       await setDoc(
         privateDocRef,
-        {
+        sanitizeFirestoreData({
           friendId: id,
           privateFields: privateFieldsPatch,
           updatedAt: serverTimestamp(),
-        },
+        }),
         { merge: true }
       );
     }
@@ -447,6 +496,212 @@ export class FirebaseFriendsRepository implements FriendsRepository {
       return false;
     }
   }
+
+  // --- FRIEND CREATION & EDIT REQUESTS ---
+
+  async createRequest(req: FriendRequest): Promise<void> {
+    const docRef = doc(db, this.requestsCollection, req.id);
+
+    // Ensure profileId is generated if not provided
+    const profileId =
+      req.profileId ||
+      (req.type === 'new_profile'
+        ? `fr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+        : null);
+
+    const dataToSave: Record<string, any> = {
+      id: req.id,
+      type: req.type,
+      status: 'pending',
+      submittedAt: serverTimestamp(),
+      applicantName: req.applicantName || '',
+      applicantContact: req.applicantContact || '',
+      profileData: req.profileData || {},
+    };
+
+    if (profileId) {
+      dataToSave.profileId = profileId;
+    }
+    if (req.originalData) {
+      dataToSave.originalData = req.originalData;
+    }
+    if (req.adminCategory) {
+      dataToSave.adminCategory = req.adminCategory;
+    }
+    if (req.assignedCategories) {
+      dataToSave.assignedCategories = req.assignedCategories;
+    }
+    if (req.adminNotes) {
+      dataToSave.adminNotes = req.adminNotes;
+    }
+
+    const sanitized = sanitizeFirestoreData(dataToSave);
+    await setDoc(docRef, sanitized);
+  }
+
+  async listRequests(statusFilter?: string): Promise<FriendRequest[]> {
+    const snap = await getDocs(collection(db, this.requestsCollection));
+    const list: FriendRequest[] = [];
+    snap.forEach((d) => {
+      const data = d.data();
+      list.push({
+        id: d.id,
+        type: data.type,
+        profileId: data.profileId,
+        status: data.status,
+        submittedAt: data.submittedAt,
+        reviewedAt: data.reviewedAt,
+        applicantName: data.applicantName || '',
+        applicantContact: data.applicantContact || '',
+        profileData: data.profileData || {},
+        originalData: data.originalData || {},
+        adminCategory: data.adminCategory,
+        assignedCategories: data.assignedCategories,
+        adminNotes: data.adminNotes,
+      });
+    });
+
+    list.sort((a, b) => {
+      const tA = a.submittedAt?.toMillis ? a.submittedAt.toMillis() : (a.submittedAt ? new Date(a.submittedAt).getTime() : 0);
+      const tB = b.submittedAt?.toMillis ? b.submittedAt.toMillis() : (b.submittedAt ? new Date(b.submittedAt).getTime() : 0);
+      return tB - tA;
+    });
+
+    if (statusFilter && statusFilter !== 'all') {
+      return list.filter((r) => r.status === statusFilter);
+    }
+    return list;
+  }
+
+  async checkPendingUpdateRequest(profileId: string): Promise<FriendRequest | null> {
+    if (!profileId) return null;
+    try {
+      const snap = await getDocs(collection(db, this.requestsCollection));
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (data.profileId === profileId && data.status === 'pending') {
+          return {
+            id: d.id,
+            type: data.type,
+            profileId: data.profileId,
+            status: data.status,
+            submittedAt: data.submittedAt,
+            applicantName: data.applicantName || '',
+            applicantContact: data.applicantContact || '',
+            profileData: data.profileData || {},
+            originalData: data.originalData || {},
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Error checking pending update request:', e);
+    }
+    return null;
+  }
+
+  async approveRequest(
+    requestId: string,
+    adminCategory: 'normal' | 'hidden' = 'normal',
+    assignedCategories: string[] = ['prefer'],
+    adminNotes?: string
+  ): Promise<Friend | null> {
+    const reqDocRef = doc(db, this.requestsCollection, requestId);
+    const snap = await getDoc(reqDocRef);
+    if (!snap.exists()) throw new Error('अनुरोध नहीं मिला (Request not found)');
+    const reqData = snap.data() as FriendRequest;
+
+    let resultFriend: Friend | null = null;
+    if (reqData.type === 'new_profile') {
+      const p = reqData.profileData || {};
+      const newFriend: Omit<Friend, 'id'> = {
+        name: p.name || reqData.applicantName || 'Friend',
+        nickname: p.nickname || null,
+        username: p.username || null,
+        user: p.username || null,
+        fullName: p.fullName || p.name || null,
+        bio: p.bio || null,
+        avatar: p.avatar || '',
+        heroPhotos: Array.isArray(p.heroPhotos) ? p.heroPhotos : [],
+        photos: [],
+        gallery: Array.isArray(p.gallery) ? p.gallery : [],
+        categories: assignedCategories.length > 0 ? assignedCategories : ['prefer'],
+        cats: assignedCategories.length > 0 ? assignedCategories : ['prefer'],
+        ffName: p.ffName || null,
+        ffUid: p.ffUid || null,
+        role: p.role || null,
+        dob: p.dob || null,
+        dobShowYear: p.dobShowYear !== false,
+        whatsapp: p.whatsapp || reqData.applicantContact || null,
+        instagram: p.instagram || null,
+        location: p.location || null,
+        city: p.city || null,
+        state: p.state || null,
+        hobbies: p.hobbies || null,
+        hobby: p.hobbies || null,
+        dream: p.dream || null,
+        goal: p.dream || null,
+        skills: p.skills || null,
+        projects: p.projects || null,
+        referredBy: p.referredBy || null,
+        relation: p.referredBy || null,
+        visibilitySettings: p.visibilitySettings || undefined,
+        links: Array.isArray(p.links) ? p.links : [],
+        accent: p.accent || '#00F2FE',
+        order: 999,
+        isVisible: true,
+        isUnlisted: adminCategory === 'hidden',
+        listingVisibility: adminCategory === 'hidden' ? 'hidden' : 'normal',
+        adminCategory: adminCategory || 'normal',
+        online: null,
+      };
+      const targetId = reqData.profileId || (reqData.profileData as any)?.id;
+      resultFriend = await this.create(newFriend, undefined, targetId);
+    } else if (reqData.type === 'profile_update' && reqData.profileId) {
+      const p = reqData.profileData || {};
+      const patch: Partial<Friend> = { ...p };
+      if (adminCategory) {
+        patch.isUnlisted = adminCategory === 'hidden';
+        patch.listingVisibility = adminCategory === 'hidden' ? 'hidden' : 'normal';
+        patch.adminCategory = adminCategory;
+      }
+      if (assignedCategories && assignedCategories.length > 0) {
+        patch.categories = assignedCategories;
+        patch.cats = assignedCategories;
+      }
+      resultFriend = await this.update(reqData.profileId, patch);
+    }
+
+    await setDoc(
+      reqDocRef,
+      sanitizeFirestoreData({
+        status: 'approved',
+        reviewedAt: serverTimestamp(),
+        adminCategory,
+        assignedCategories,
+        adminNotes: adminNotes || '',
+      }),
+      { merge: true }
+    );
+
+    return resultFriend;
+  }
+
+  async rejectRequest(requestId: string, adminNotes?: string): Promise<void> {
+    const reqDocRef = doc(db, this.requestsCollection, requestId);
+    await setDoc(
+      reqDocRef,
+      {
+        status: 'rejected',
+        reviewedAt: serverTimestamp(),
+        adminNotes: adminNotes || '',
+      },
+      { merge: true }
+    );
+  }
+
+  async deleteRequest(requestId: string): Promise<void> {
+    await deleteDoc(doc(db, this.requestsCollection, requestId));
+  }
 }
 
 // Export singleton instance connected to Firebase
@@ -462,18 +717,13 @@ export interface UseFriendsResult {
 /**
  * Custom React hook for live data from Firestore with real-time onSnapshot support
  */
-export function useFriends(category?: CategoryKey): UseFriendsResult {
+export function useFriends(category?: CategoryKey, options?: { includeUnlisted?: boolean }): UseFriendsResult {
+  const includeUnlisted = options?.includeUnlisted === true;
+
   // Initialize from cache immediately if present to eliminate flicker
   const [friends, setFriends] = useState<Friend[]>(() => {
     if (cachedFriends && cachedFriends.length > 0) {
-      const isAdmin = isUserAdmin(auth.currentUser);
-      const visibleList = isAdmin ? cachedFriends : cachedFriends.filter((f) => f.isVisible !== false);
-      if (!category || category === 'all') return visibleList;
-      if (category === 'online') return visibleList.filter((f) => f.online === true);
-      return visibleList.filter((f) => {
-        const cats = f.categories || f.cats || [];
-        return cats.includes(category);
-      });
+      return friendsRepository.filterByCategory(cachedFriends, category, { includeUnlisted });
     }
     return [];
   });
@@ -491,7 +741,7 @@ export function useFriends(category?: CategoryKey): UseFriendsResult {
         setIsLoading(true);
       }
       setError(null);
-      const data = await friendsRepository.list(category, true);
+      const data = await friendsRepository.list(category, true, { includeUnlisted });
       setFriends(data);
     } catch (err: any) {
       console.warn('Friends Firestore list warning:', err?.message || err);
@@ -554,11 +804,35 @@ export function useFriends(category?: CategoryKey): UseFriendsResult {
               dob: data.dob || null,
               dobShowYear: data.dobShowYear !== false,
               whatsapp: data.whatsapp || null,
+              instagram: data.instagram || null,
+              location: data.location || null,
+              city: data.city || null,
+              state: data.state || null,
+              hobbies: data.hobbies || data.hobby || null,
+              hobby: data.hobbies || data.hobby || null,
+              dream: data.dream || data.goal || null,
+              goal: data.dream || data.goal || null,
+              skills: Array.isArray(data.skills)
+                ? data.skills
+                : typeof data.skills === 'string'
+                ? data.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+                : null,
+              projects: Array.isArray(data.projects)
+                ? data.projects
+                : typeof data.projects === 'string'
+                ? data.projects.split(',').map((p: string) => p.trim()).filter(Boolean)
+                : null,
+              referredBy: data.referredBy || data.relation || null,
+              relation: data.referredBy || data.relation || null,
+              visibilitySettings: data.visibilitySettings || null,
               links: Array.isArray(data.links) ? data.links : [],
               accent: data.accent || '#00F2FE',
               online: data.online ?? null,
               order: typeof data.order === 'number' ? data.order : 999,
               isVisible: data.isVisible !== false,
+              isUnlisted: data.isUnlisted === true,
+              listingVisibility: data.listingVisibility || (data.isUnlisted ? 'hidden' : 'normal'),
+              adminCategory: data.adminCategory || (data.isUnlisted ? 'hidden' : 'normal'),
               createdAt: data.createdAt,
               updatedAt: data.updatedAt,
             });
@@ -569,21 +843,8 @@ export function useFriends(category?: CategoryKey): UseFriendsResult {
           cacheTimestamp = Date.now();
           saveFriendsToStorage(list);
 
-          const isAdmin = isUserAdmin(auth.currentUser);
-          const visibleList = isAdmin ? list : list.filter((f) => f.isVisible !== false);
-
-          if (!category || category === 'all') {
-            setFriends(visibleList);
-          } else if (category === 'online') {
-            setFriends(visibleList.filter((f) => f.online === true));
-          } else {
-            setFriends(
-              visibleList.filter((f) => {
-                const cats = f.categories || f.cats || [];
-                return cats.includes(category);
-              })
-            );
-          }
+          const filtered = friendsRepository.filterByCategory(list, category, { includeUnlisted });
+          setFriends(filtered);
           setIsLoading(false);
         },
         (err) => {
@@ -616,7 +877,7 @@ export function useFriends(category?: CategoryKey): UseFriendsResult {
       clearTimeout(safetyTimer);
       unsubscribe();
     };
-  }, [category]);
+  }, [category, includeUnlisted]);
 
   return {
     friends,
@@ -695,3 +956,78 @@ export function useFriendsConfig(): {
 
   return { settings, isLoading, refreshSettings: fetchSettings };
 }
+
+export function useFriendRequests(statusFilter?: string): {
+  requests: FriendRequest[];
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+} {
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchRequests = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await friendsRepository.listRequests(statusFilter);
+      setRequests(data);
+      setError(null);
+    } catch (e: any) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [statusFilter]);
+
+  useEffect(() => {
+    let unsubscribe: () => void = () => {};
+    try {
+      unsubscribe = onSnapshot(
+        collection(db, 'friendRequests'),
+        (snap) => {
+          const list: FriendRequest[] = [];
+          snap.forEach((d) => {
+            const data = d.data();
+            list.push({
+              id: d.id,
+              type: data.type,
+              profileId: data.profileId,
+              status: data.status,
+              submittedAt: data.submittedAt,
+              reviewedAt: data.reviewedAt,
+              applicantName: data.applicantName || '',
+              applicantContact: data.applicantContact || '',
+              profileData: data.profileData || {},
+              originalData: data.originalData || {},
+              adminCategory: data.adminCategory,
+              assignedCategories: data.assignedCategories,
+              adminNotes: data.adminNotes,
+            });
+          });
+          list.sort((a, b) => {
+            const tA = a.submittedAt?.toMillis ? a.submittedAt.toMillis() : (a.submittedAt ? new Date(a.submittedAt).getTime() : 0);
+            const tB = b.submittedAt?.toMillis ? b.submittedAt.toMillis() : (b.submittedAt ? new Date(b.submittedAt).getTime() : 0);
+            return tB - tA;
+          });
+          if (statusFilter && statusFilter !== 'all') {
+            setRequests(list.filter((r) => r.status === statusFilter));
+          } else {
+            setRequests(list);
+          }
+          setIsLoading(false);
+        },
+        (err) => {
+          console.warn('FriendRequests onSnapshot warning:', err);
+          fetchRequests();
+        }
+      );
+    } catch {
+      fetchRequests();
+    }
+    return () => unsubscribe();
+  }, [statusFilter, fetchRequests]);
+
+  return { requests, isLoading, error, refetch: fetchRequests };
+}
+

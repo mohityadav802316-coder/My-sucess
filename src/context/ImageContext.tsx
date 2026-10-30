@@ -410,7 +410,7 @@ export const defaultSiteSettings: SiteSettings = {
     locationHi: 'बिहार, भारत',
     responseAvailability: 'Open for learning collaborations and tech discussions',
     responseAvailabilityHi: 'तकनीकी सहयोग और चर्चा के लिए हमेशा उपलब्ध',
-    whatsappNumber: '+918023160000',
+    whatsappNumber: '+919153086540',
     instagramUrl: 'https://instagram.com/mohityadav',
     phoneNumber: '',
     isPhonePublic: false,

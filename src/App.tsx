@@ -286,7 +286,13 @@ const MainPortfolio: React.FC = () => {
       </main>
 
       {/* Footer with Admin & Social Access */}
-      <Footer onOpenAdmin={() => setIsAdminOpen(true)} />
+      <Footer
+        onOpenAdmin={() => setIsAdminOpen(true)}
+        onReplayBoot={() => {
+          sound.playWarp();
+          setIsBooting(true);
+        }}
+      />
 
       {/* Floating Modals (Loaded on-demand only when triggered) */}
       {isFamilyVaultOpen && (

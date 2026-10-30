@@ -1,13 +1,14 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { sound } from '../audio/SoundEffects';
-import { Shield, ArrowUp } from 'lucide-react';
+import { Shield, ArrowUp, Sparkles } from 'lucide-react';
 
 interface FooterProps {
   onOpenAdmin: () => void;
+  onReplayBoot?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onOpenAdmin }) => {
+export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, onReplayBoot }) => {
   const { mode } = useLanguage();
 
   const scrollToTop = () => {
@@ -72,6 +73,22 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin }) => {
               <Shield className="w-3.5 h-3.5" />
               <span>Admin Portal</span>
             </button>
+            {onReplayBoot && (
+              <>
+                <span aria-hidden="true" className="text-slate-700">•</span>
+                <button
+                  onClick={() => {
+                    sound.playClick();
+                    onReplayBoot();
+                  }}
+                  className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-semibold cursor-pointer"
+                  title="Replay Cyber Boot Sequence"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{mode === 'hi' ? 'री-प्ले बूट' : 'Replay Boot'}</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Scroll to Top */}

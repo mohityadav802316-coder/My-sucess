@@ -239,13 +239,18 @@ export const GuestbookSection: React.FC = () => {
               )}
 
               {successNotice && (
-                <div className="p-3 rounded-xl bg-purple-950/80 border border-purple-500/40 text-purple-200 text-xs font-mono flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-400" />
-                  <span>
-                    {mode === 'hi'
-                      ? 'धन्यवाद! आपका संदेश Admin समीक्षा के लिए भेजा गया है।'
-                      : 'Thank you! Your note is submitted for Admin review.'}
-                  </span>
+                <div className="p-3.5 rounded-xl bg-emerald-950/70 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-start gap-2.5 shadow-lg shadow-emerald-950/40 animate-in fade-in duration-300">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-400 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-emerald-300">
+                      {mode === 'hi' ? 'संदेश सफलतापूर्वक भेज दिया गया!' : 'Message Sent Successfully!'}
+                    </p>
+                    <p className="text-[11px] text-emerald-200/90 leading-relaxed">
+                      {mode === 'hi'
+                        ? 'मोहित द्वारा समीक्षा व स्वीकृति (Approval) के बाद यह संदेश पब्लिक वॉल पर दिखाई देगा।'
+                        : 'Your note will be displayed publicly on the wall once reviewed and approved by Mohit.'}
+                    </p>
+                  </div>
                 </div>
               )}
 

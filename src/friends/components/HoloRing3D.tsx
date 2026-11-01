@@ -188,3 +188,5 @@ export const HoloRing3D: React.FC<HoloRing3DProps> = ({
     />
   );
 };
+
+export default HoloRing3D;

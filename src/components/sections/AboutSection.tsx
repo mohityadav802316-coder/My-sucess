@@ -1,255 +1,235 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useMemo } from 'react';
+import { motion, type Variants } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useImages } from '../../context/ImageContext';
-import { MysticTextReveal } from '../vfx/MysticTextReveal';
-import { MysticTiltCard } from '../vfx/MysticTiltCard';
-import { BlackMagicSmoke } from '../vfx/BlackMagicSmoke';
-import { GraduationCap, Target, Camera, Sparkles, Brain, Cpu, Globe, Binary, Shield, Compass, Heart } from 'lucide-react';
+
+/* ------------------------------------------------------------------ *
+ *  Fonts (index.html में एक बार, अगर पहले से नहीं जोड़े):
+ *  https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@400;500;600&display=swap
+ * ------------------------------------------------------------------ */
+
+const TOKENS = {
+  '--gold': '#D4AF5F',
+  '--gold-soft': '#F1DFA8',
+  '--gold-deep': '#A8823A',
+  '--text': '#F6F0E4',
+  '--muted': '#9A8F7C',
+  '--panel': 'rgba(14,12,9,0.72)',
+  '--line': 'rgba(212,175,95,0.22)',
+  '--line-strong': 'rgba(212,175,95,0.55)',
+} as React.CSSProperties;
+
+const SERIF: React.CSSProperties = {
+  fontFamily: '"Cormorant Garamond", Georgia, serif',
+};
+const GOLD_TEXT: React.CSSProperties = {
+  backgroundImage:
+    'linear-gradient(120deg, var(--gold-soft) 0%, var(--gold) 50%, var(--gold-deep) 100%)',
+  WebkitBackgroundClip: 'text',
+  backgroundClip: 'text',
+  color: 'transparent',
+};
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+const group: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.09 } },
+};
+const rise: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.75, ease: EASE } },
+};
+
+const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span
+    className="block text-[10px] font-semibold uppercase tracking-[0.3em]"
+    style={{ color: 'var(--gold)', fontFamily: 'Inter, system-ui, sans-serif' }}
+  >
+    {children}
+  </span>
+);
+
+const Fact: React.FC<{ label: string; title: string; text: string }> = ({ label, title, text }) => (
+  <div className="py-6 first:pt-0 border-b last:border-b-0" style={{ borderColor: 'var(--line)' }}>
+    <Label>{label}</Label>
+    <h3 className="mt-2 text-2xl sm:text-[26px] font-normal leading-snug" style={{ ...SERIF, color: 'var(--text)' }}>
+      {title}
+    </h3>
+    <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>
+      {text}
+    </p>
+  </div>
+);
 
 export const AboutSection: React.FC = () => {
   const { mode } = useLanguage();
   const { mainProfileImage, siteSettings } = useImages();
+  const hi = mode === 'hi';
+  const t = (en: string, h: string) => (hi ? h : en);
 
-  const localPhotoUrl =
-    typeof window !== 'undefined' ? (localStorage.getItem('mohit_profile_photo')?.trim() || null) : null;
-  const rawDownloadUrl = mainProfileImage?.downloadUrl?.trim();
-  const displayPhotoUrl = (rawDownloadUrl && rawDownloadUrl !== '') ? rawDownloadUrl : localPhotoUrl;
+  const photo = useMemo(() => {
+    const remote = mainProfileImage?.downloadUrl?.trim();
+    if (remote) return remote;
+    if (typeof window === 'undefined') return '';
+    try {
+      return localStorage.getItem('mohit_profile_photo')?.trim() || '';
+    } catch {
+      return '';
+    }
+  }, [mainProfileImage?.downloadUrl]);
 
-  // 6 Glowing Mystic Badges for Technical Domains
-  const technicalBadges = [
-    {
-      id: 'ai_agents',
-      icon: <Brain className="w-3.5 h-3.5 text-amber-400" />,
-      en: 'AI Engineering & Agents',
-      hi: 'AI इंजीनियरिंग व एजेंट्स',
-      glow: 'shadow-[0_0_15px_rgba(245,158,11,0.3)] border-amber-500/40 text-amber-300',
-    },
-    {
-      id: 'python_auto',
-      icon: <Cpu className="w-3.5 h-3.5 text-rose-400" />,
-      en: 'Python & Automation',
-      hi: 'पायथन व ऑटोमेशन',
-      glow: 'shadow-[0_0_15px_rgba(225,29,72,0.3)] border-rose-500/40 text-rose-300',
-    },
-    {
-      id: 'web_apps',
-      icon: <Globe className="w-3.5 h-3.5 text-cyan-400" />,
-      en: 'Web & Mobile Apps',
-      hi: 'वेब व मोबाइल ऐप्स',
-      glow: 'shadow-[0_0_15px_rgba(6,182,212,0.3)] border-cyan-500/40 text-cyan-300',
-    },
-    {
-      id: 'ml_math',
-      icon: <Binary className="w-3.5 h-3.5 text-purple-400" />,
-      en: 'Machine Learning Math',
-      hi: 'मशीन लर्निंग व गणित',
-      glow: 'shadow-[0_0_15px_rgba(168,85,247,0.3)] border-purple-500/40 text-purple-300',
-    },
-    {
-      id: 'spatial_3d',
-      icon: <Sparkles className="w-3.5 h-3.5 text-amber-300" />,
-      en: '3D Spatial WebGL',
-      hi: '3D स्पेशल WebGL',
-      glow: 'shadow-[0_0_15px_rgba(251,191,36,0.3)] border-amber-400/40 text-amber-200',
-    },
-    {
-      id: 'cyber_defense',
-      icon: <Shield className="w-3.5 h-3.5 text-emerald-400" />,
-      en: 'Defensive Cyber Security',
-      hi: 'सुरक्षित साइबर आर्किटेक्चर',
-      glow: 'shadow-[0_0_15px_rgba(16,185,129,0.3)] border-emerald-500/40 text-emerald-300',
-    },
+  const skills = [
+    t('AI Engineering', 'AI इंजीनियरिंग'),
+    t('Python & Automation', 'पायथन व ऑटोमेशन'),
+    t('Web & Mobile Apps', 'वेब व मोबाइल ऐप्स'),
+    t('Machine Learning', 'मशीन लर्निंग'),
+    t('3D & WebGL', '3D व WebGL'),
+    t('Cyber Security', 'साइबर सुरक्षा'),
   ];
+
+  const showHobby = siteSettings.profile?.showHobby !== false;
+  const hobby = hi
+    ? siteSettings.profile?.hobbyHi || 'AI डेवलपमेंट और 3D डिज़ाइन'
+    : siteSettings.profile?.hobbyEn || 'AI development & 3D design';
 
   return (
     <section
       id="about"
-      className="py-20 px-4 sm:px-6 lg:px-8 relative min-h-screen flex flex-col justify-center overflow-hidden select-none"
+      style={TOKENS}
+      className="relative overflow-hidden px-5 sm:px-8 lg:px-10 py-24 sm:py-28"
     >
-      <div className="max-w-6xl mx-auto w-full space-y-10 relative z-10">
-        {/* Section Header: Pure Unboxed Typography Floating Over 3D */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="space-y-2 text-left"
-        >
-          <div className="inline-flex items-center gap-2 text-xs font-mono tracking-widest text-rose-400 drop-shadow-[0_0_10px_rgba(225,29,72,0.5)]">
-            <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-            <span>SCENE 02 • BIOGRAPHY &amp; VISION</span>
-          </div>
+      {/* सूक्ष्म gold रोशनी — सिर्फ़ एक */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 left-1/2 h-[380px] w-[720px] -translate-x-1/2 opacity-[0.14] blur-[130px]"
+        style={{ background: 'radial-gradient(circle, var(--gold) 0%, transparent 70%)' }}
+      />
 
-          <BlackMagicSmoke theme="crimson">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-cyber font-black tracking-wide text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.9)]">
-              <MysticTextReveal
-                text={mode === 'hi' ? 'परिचय एवं भविष्य दृष्टिकोण' : 'About Me & Future Vision'}
-                magicTheme="scarlet"
-                className="text-transparent bg-clip-text bg-gradient-to-r from-rose-200 via-amber-200 to-rose-400"
-              />
-            </h2>
-          </BlackMagicSmoke>
-
-          <BlackMagicSmoke theme="multi">
-            <p className="text-sm sm:text-base font-mono text-amber-200/90 max-w-2xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-              {mode === 'hi'
-                ? 'कक्षा 12 विज्ञान की मजबूत नींव और स्वायत्त AI सिस्टम विकसित करने का दैनिक संकल्प।'
-                : 'Class 12 Science foundation combined with daily engineering to architect real AI systems.'}
-            </p>
-          </BlackMagicSmoke>
-        </motion.div>
-
-        {/* 2-Column Responsive Layout: 3D Tilt Photo + Unified Compact Academic & Vision Card */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          {/* Left Column: 3D Tilt Photo Card with Mystic Aura */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-5 flex flex-col items-center"
+      <motion.div
+        variants={group}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: '-60px' }}
+        className="relative mx-auto max-w-6xl"
+      >
+        {/* ---------- Heading ---------- */}
+        <motion.header variants={rise} className="mb-14 sm:mb-16 max-w-2xl">
+          <Label>{t('About', 'परिचय')}</Label>
+          <h2
+            className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-light leading-[1.05]"
+            style={{ ...SERIF, ...GOLD_TEXT }}
           >
-            <MysticTiltCard
-              glowTheme="scarlet"
-              className="w-full max-w-[320px] aspect-[4/5] bg-slate-950/90"
-            >
-              <div className="w-full h-full relative flex flex-col items-center justify-center p-2">
-                {displayPhotoUrl && displayPhotoUrl.trim() !== '' ? (
+            {t('Building things that matter', 'ऐसा बनाना जो काम आए')}
+          </h2>
+          <p className="mt-5 text-base leading-relaxed" style={{ color: 'var(--muted)' }}>
+            {t(
+              'Class 12 Science student who writes code every day and builds real AI tools.',
+              'कक्षा 12 विज्ञान का छात्र, जो हर दिन कोड लिखता है और असली AI टूल बनाता है।'
+            )}
+          </p>
+        </motion.header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+          {/* ---------- Portrait ---------- */}
+          <motion.div variants={rise} className="lg:col-span-5 flex flex-col items-center">
+            <div className="relative h-[400px] w-[290px] sm:h-[440px] sm:w-[320px]">
+              <div
+                aria-hidden
+                className="absolute -inset-3 rounded-t-[160px] rounded-b-[26px] border"
+                style={{ borderColor: 'var(--line)' }}
+              />
+              <div
+                className="relative h-full w-full overflow-hidden rounded-t-[150px] rounded-b-[18px] border"
+                style={{
+                  borderColor: 'var(--line-strong)',
+                  background: 'radial-gradient(ellipse at 50% 25%, #2b2314 0%, #0b0907 75%)',
+                  boxShadow: '0 40px 90px -30px rgba(0,0,0,0.95), 0 0 60px -20px rgba(212,175,95,0.25)',
+                }}
+              >
+                {photo ? (
                   <img
-                    src={displayPhotoUrl || undefined}
-                    alt="Mohit Yadav - Official Portrait"
-                    className="w-full h-full object-cover rounded-2xl"
+                    src={photo}
+                    alt="Mohit Yadav"
+                    decoding="async"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-3 bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 rounded-2xl">
-                    <div className="w-20 h-20 rounded-2xl bg-slate-900 border border-amber-500/30 flex items-center justify-center shadow-lg">
-                      <Camera className="w-8 h-8 text-amber-400" />
-                    </div>
-                    <div>
-                      <span className="font-cyber font-bold text-base text-white block">
-                        MOHIT YADAV
-                      </span>
-                      <span className="text-xs font-mono text-amber-300 block">
-                        BSEB Class 12 Science
-                      </span>
-                    </div>
+                  <div className="flex h-full w-full items-center justify-center">
+                    <span className="text-[110px] font-light leading-none" style={{ ...SERIF, ...GOLD_TEXT }}>
+                      M
+                    </span>
                   </div>
                 )}
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
               </div>
-            </MysticTiltCard>
-            <div className="mt-3 flex items-center gap-2 text-xs font-mono text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>OFFICIAL PROFILE • VERIFIED BSEB STUDENT</span>
+            </div>
+
+            <div className="mt-9 text-center">
+              <p className="text-3xl font-normal" style={{ ...SERIF, color: 'var(--text)' }}>
+                Mohit Yadav
+              </p>
+              <p
+                className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.3em]"
+                style={{ color: 'var(--gold)' }}
+              >
+                {t('Class 12 · Science', 'कक्षा 12 · विज्ञान')}
+              </p>
             </div>
           </motion.div>
 
-          {/* Right Column: Combined Academic + Vision Compact Card + 6 Glowing Badges */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-7 space-y-6"
-          >
-            {/* Combined Academic & Vision Single Card */}
-            <MysticTiltCard
-              glowTheme="gold"
-              className="p-5 sm:p-6 bg-slate-950/85 backdrop-blur-xl space-y-4"
+          {/* ---------- Content ---------- */}
+          <motion.div variants={rise} className="lg:col-span-7">
+            <div
+              className="rounded-3xl border p-7 sm:p-10 backdrop-blur-sm"
+              style={{ background: 'var(--panel)', borderColor: 'var(--line)' }}
             >
-              {/* Academic Part */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-amber-400 text-xs font-mono">
-                  <GraduationCap className="w-4 h-4 text-amber-400" />
-                  <span className="font-semibold uppercase tracking-wider">
-                    {mode === 'hi' ? 'शैक्षणिक आधार' : 'Academic Foundation'}
-                  </span>
-                </div>
-                <h3 className="font-cyber font-bold text-lg sm:text-xl text-white">
-                  {mode === 'hi'
-                    ? 'कक्षा 12 (विज्ञान) - बिहार विद्यालय परीक्षा समिति (BSEB)'
-                    : 'Class 12 Science — Bihar Board (BSEB)'}
-                </h3>
-                <p className="text-slate-300 text-xs sm:text-sm font-sans leading-relaxed">
-                  {mode === 'hi'
-                    ? 'भौतिकी, रसायन और गणित के सिद्धांतों के साथ दैनिक पायथन प्रोग्रामिंग व सॉफ्टवेयर इंजीनियरिंग का अभ्यास।'
-                    : 'Rigorous PCM foundation paired with daily hands-on software development in Python.'}
-                </p>
-              </div>
+              <Fact
+                label={t('Education', 'शिक्षा')}
+                title={t('Class 12 Science, Bihar Board', 'कक्षा 12 विज्ञान, बिहार बोर्ड')}
+                text={t(
+                  'Strong base in Physics, Chemistry and Maths, with Python practice every day.',
+                  'भौतिकी, रसायन और गणित की मज़बूत नींव, और रोज़ पायथन का अभ्यास।'
+                )}
+              />
+              <Fact
+                label={t('Goal', 'लक्ष्य')}
+                title={t('Applied AI Engineer', 'एप्लाइड AI इंजीनियर')}
+                text={t(
+                  'To build AI agents and software that people can actually use.',
+                  'ऐसे AI एजेंट और सॉफ़्टवेयर बनाना जिन्हें लोग सच में इस्तेमाल करें।'
+                )}
+              />
+              {showHobby && (
+                <Fact label={t('Hobby', 'शौक़')} title={hobby} text="" />
+              )}
+            </div>
 
-              {/* Divider */}
-              <div className="h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
-
-              {/* Vision Part */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-rose-400 text-xs font-mono">
-                  <Target className="w-4 h-4 text-rose-400" />
-                  <span className="font-semibold uppercase tracking-wider">
-                    {mode === 'hi' ? 'भविष्य दृष्टि और उद्देश्य' : 'Horizon Vision & Purpose'}
-                  </span>
-                </div>
-                <h3 className="font-cyber font-bold text-lg sm:text-xl text-white">
-                  {mode === 'hi'
-                    ? 'भावी एप्लाइड AI इंजीनियर'
-                    : 'Aspiring Applied AI Engineer'}
-                </h3>
-                <p className="text-slate-300 text-xs sm:text-sm font-sans leading-relaxed">
-                  {mode === 'hi'
-                    ? 'स्वायत्त AI एजेंट्स और आधुनिक सॉफ़्टवेयर सिस्टम का निर्माण करना जो वास्तविक जीवन में उपयोगी हों।'
-                    : 'Architecting autonomous agents and intelligent software that deliver measurable real-world utility.'}
-                </p>
-              </div>
-            </MysticTiltCard>
-
-            {/* Configurable My Hobby / मेरी हॉबी Badge (Toggleable from Admin) */}
-            {siteSettings.profile?.showHobby !== false && (
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-900/90 border border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
-                    <Heart className="w-4 h-4 text-rose-400" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-rose-400 font-bold block">
-                      {mode === 'hi' ? 'मेरी हॉबी' : 'MY HOBBY'}
-                    </span>
-                    <span className="text-xs sm:text-sm font-cyber font-bold text-white block">
-                      {mode === 'hi'
-                        ? (siteSettings.profile?.hobbyHi || 'AI डेवलपर एवं 3D विजुअल्स')
-                        : (siteSettings.profile?.hobbyEn || 'AI Developer & Spatial 3D Systems')}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono text-rose-300/80 bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-500/20">
-                  {mode === 'hi' ? 'सक्रिय पैशन' : 'Active Passion'}
-                </span>
-              </div>
-            )}
-
-            {/* 6 Glowing Mystic Badges for Technical Domains */}
-            <div className="space-y-2.5 pt-1">
-              <div className="flex items-center gap-2 text-xs font-mono text-amber-300">
-                <Compass className="w-3.5 h-3.5" />
-                <span className="tracking-wider uppercase">
-                  {mode === 'hi' ? '6 प्रमुख तकनीकी स्तंभ' : '6 Core Technical Domains'}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {technicalBadges.map((badge) => (
-                  <div
-                    key={badge.id}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/90 border backdrop-blur-md transition-all duration-300 hover:scale-105 cursor-default ${badge.glow}`}
+            {/* ---------- Skills ---------- */}
+            <div className="mt-12">
+              <Label>{t('What I work with', 'मेरा काम')}</Label>
+              <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-10">
+                {skills.map((s, i) => (
+                  <li
+                    key={s}
+                    className="group flex items-baseline gap-4 border-b py-4 transition-colors"
+                    style={{ borderColor: 'var(--line)' }}
                   >
-                    <div className="shrink-0">{badge.icon}</div>
-                    <span className="text-[11px] font-mono font-medium truncate">
-                      {mode === 'hi' ? badge.hi : badge.en}
+                    <span className="text-lg font-light leading-none" style={{ ...SERIF, ...GOLD_TEXT }}>
+                      {String(i + 1).padStart(2, '0')}
                     </span>
-                  </div>
+                    <span
+                      className="text-sm sm:text-[15px] transition-colors group-hover:text-[color:var(--gold-soft)]"
+                      style={{ color: 'var(--text)' }}
+                    >
+                      {s}
+                    </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           </motion.div>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 };

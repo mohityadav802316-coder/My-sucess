@@ -1,156 +1,210 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useRef } from 'react';
+import { motion, useScroll, useSpring, type Variants } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useImages } from '../../context/ImageContext';
-import { MysticTextReveal } from '../vfx/MysticTextReveal';
-import { MysticTiltCard } from '../vfx/MysticTiltCard';
-import { BlackMagicSmoke } from '../vfx/BlackMagicSmoke';
-import { CheckCircle2, Clock, Sparkles, Compass } from 'lucide-react';
+
+/* Fonts (index.html में एक बार):
+   https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@400;500;600&display=swap */
+
+const TOKENS = {
+  '--gold': '#D4AF5F',
+  '--gold-soft': '#F1DFA8',
+  '--gold-deep': '#A8823A',
+  '--text': '#F6F0E4',
+  '--muted': '#9A8F7C',
+  '--panel': '#0C0B09',
+  '--line': 'rgba(212,175,95,0.2)',
+  '--line-strong': 'rgba(212,175,95,0.55)',
+} as React.CSSProperties;
+
+const SERIF: React.CSSProperties = { fontFamily: '"Cormorant Garamond", Georgia, serif' };
+const GOLD_TEXT: React.CSSProperties = {
+  backgroundImage: 'linear-gradient(120deg, var(--gold-soft) 0%, var(--gold) 50%, var(--gold-deep) 100%)',
+  WebkitBackgroundClip: 'text',
+  backgroundClip: 'text',
+  color: 'transparent',
+};
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+const rise: Variants = {
+  hidden: { opacity: 0, y: 26 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: EASE } },
+};
+
+type Kind = 'done' | 'active' | 'future';
+const getKind = (s: string): Kind => (s === 'completed' ? 'done' : s === 'in-progress' ? 'active' : 'future');
+const DEFAULT_LABEL: Record<Kind, { en: string; hi: string }> = {
+  done: { en: 'Completed', hi: 'पूर्ण' },
+  active: { en: 'In progress', hi: 'जारी' },
+  future: { en: 'Upcoming', hi: 'आगामी' },
+};
+
+/* सुनहरा बिंदु: पूर्ण = ठोस, जारी = धड़कता हुआ, आगामी = खोखला */
+const Node: React.FC<{ kind: Kind }> = ({ kind }) => (
+  <span className="relative flex h-4 w-4 items-center justify-center">
+    {kind === 'active' && (
+      <span className="absolute -inset-2 animate-ping rounded-full border opacity-40" style={{ borderColor: 'var(--gold)' }} />
+    )}
+    <span
+      className="h-4 w-4 rounded-full border-2"
+      style={{
+        borderColor: 'var(--gold)',
+        background: kind === 'future' ? '#070707' : 'var(--gold)',
+        boxShadow: kind === 'future' ? 'none' : '0 0 0 5px rgba(212,175,95,0.14), 0 0 18px rgba(212,175,95,0.5)',
+      }}
+    />
+  </span>
+);
 
 export const RoadmapSection: React.FC = () => {
   const { mode } = useLanguage();
   const { milestones } = useImages();
+  const hi = mode === 'hi';
+  const t = (en: string, h: string) => (hi ? h : en);
 
-  const getMilestoneStatus = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return {
-          icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />,
-          color: 'text-emerald-400',
-          dotBg: 'bg-emerald-400 ring-4 ring-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.8)]',
-          theme: 'cyan' as const,
-        };
-      case 'in-progress':
-        return {
-          icon: <Clock className="w-3.5 h-3.5 text-amber-400" />,
-          color: 'text-amber-400',
-          dotBg: 'bg-amber-400 ring-4 ring-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.8)]',
-          theme: 'gold' as const,
-        };
-      case 'future':
-      default:
-        return {
-          icon: <Sparkles className="w-3.5 h-3.5 text-rose-400" />,
-          color: 'text-rose-400',
-          dotBg: 'bg-rose-400 ring-4 ring-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.8)]',
-          theme: 'scarlet' as const,
-        };
-    }
+  // Scroll करते ही सुनहरी रेखा भरती जाती है
+  const trackRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: trackRef, offset: ['start 70%', 'end 60%'] });
+  const fill = useSpring(scrollYProgress, { stiffness: 90, damping: 24, mass: 0.4 });
+
+  // Spotlight: कर्सर के साथ चलती रोशनी
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--mx', `${e.clientX - r.left}px`);
+    el.style.setProperty('--my', `${e.clientY - r.top}px`);
   };
 
   return (
     <section
       id="roadmap"
-      className="py-20 px-4 sm:px-6 lg:px-8 relative min-h-screen flex flex-col justify-center overflow-hidden select-none"
+      style={TOKENS}
+      className="relative overflow-hidden px-5 py-24 sm:px-8 sm:py-28 lg:px-10 select-none"
     >
-      <div className="max-w-6xl mx-auto w-full space-y-12 relative z-10">
-        {/* Section Header: Pure Unboxed Floating Typography */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="space-y-2 text-left"
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 left-1/2 h-[400px] w-[760px] -translate-x-1/2 opacity-[0.14] blur-[140px]"
+        style={{ background: 'radial-gradient(circle, var(--gold) 0%, transparent 70%)' }}
+      />
+
+      <div className="relative mx-auto max-w-6xl">
+        <motion.header
+          variants={rise}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-60px' }}
+          className="mb-16 max-w-2xl sm:mb-20"
         >
-          <div className="inline-flex items-center gap-2 text-xs font-mono tracking-widest text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">
-            <Compass className="w-3.5 h-3.5 text-emerald-400 animate-spin" style={{ animationDuration: '10s' }} />
-            <span>SCENE 06 • JOURNEY &amp; EVOLUTION TIMELINE</span>
-          </div>
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: 'var(--gold)' }}>
+            {t('Roadmap', 'यात्रा')}
+          </span>
+          <h2 className="mt-4 text-4xl font-light leading-[1.05] sm:text-5xl lg:text-6xl" style={{ ...SERIF, ...GOLD_TEXT }}>
+            {t('My Journey', 'मेरी यात्रा')}
+          </h2>
+          <p className="mt-5 text-base leading-relaxed" style={{ color: 'var(--muted)' }}>
+            {t(
+              'The steps I have taken, and the ones coming next, from Class 12 Science to building AI.',
+              'कक्षा 12 विज्ञान से AI बनाने तक, मेरे अब तक के और आगे के कदम।'
+            )}
+          </p>
+        </motion.header>
 
-          <BlackMagicSmoke theme="darkMagic">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-cyber font-black tracking-wide text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.9)]">
-              <MysticTextReveal
-                text={mode === 'hi' ? 'मेरी तकनीकी यात्रा (Journey)' : 'My Tech Journey & Milestones'}
-                magicTheme="amber"
-                className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-amber-200 to-rose-300"
-              />
-            </h2>
-          </BlackMagicSmoke>
+        <div ref={trackRef} className="relative">
+          {/* Spine */}
+          <div
+            aria-hidden
+            className="absolute bottom-2 left-4 top-2 w-px -translate-x-1/2 lg:left-1/2"
+            style={{ background: 'var(--line)' }}
+          />
+          <motion.div
+            aria-hidden
+            className="absolute bottom-2 left-4 top-2 w-px origin-top -translate-x-1/2 lg:left-1/2"
+            style={{
+              scaleY: fill,
+              background: 'linear-gradient(to bottom, var(--gold-soft), var(--gold) 60%, var(--gold-deep))',
+              boxShadow: '0 0 14px rgba(212,175,95,0.6)',
+            }}
+          />
 
-          <BlackMagicSmoke theme="multi">
-            <p className="text-sm sm:text-base font-mono text-emerald-200/90 max-w-2xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-              {mode === 'hi'
-                ? 'कक्षा 12 विज्ञान की नींव से लेकर आधुनिक AI और सॉफ्टवेयर निर्माण तक के महत्वपूर्ण पड़ाव।'
-                : 'Key milestones from Class 12 Science foundations to autonomous AI systems and software builds.'}
-            </p>
-          </BlackMagicSmoke>
-        </motion.div>
-
-        {/* Glowing 3D Neon Timeline Spine with Mystic Energy */}
-        <div className="relative">
-          {/* Central 3D Glowing Line on Desktop */}
-          <div className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-2 bottom-2 w-1 rounded-full bg-gradient-to-b from-amber-400 via-rose-500 to-cyan-400 shadow-[0_0_20px_rgba(245,158,11,0.6)] opacity-70" />
-          {/* Left 3D Glowing Line on Mobile */}
-          <div className="lg:hidden absolute left-4 top-2 bottom-2 w-1 rounded-full bg-gradient-to-b from-amber-400 via-rose-500 to-cyan-400 shadow-[0_0_20px_rgba(245,158,11,0.6)] opacity-70" />
-
-          <div className="space-y-10">
-            {milestones.map((m, idx) => {
-              const statusMeta = getMilestoneStatus(m.status);
-              const isEven = idx % 2 === 0;
+          <div className="space-y-12 lg:space-y-16">
+            {milestones.map((m, i) => {
+              const kind = getKind(m.status);
+              const left = i % 2 === 0;
+              const label = hi
+                ? m.statusTextHi || m.statusText || DEFAULT_LABEL[kind].hi
+                : m.statusText || DEFAULT_LABEL[kind].en;
+              const title = hi ? m.titleHi || m.title : m.title;
+              const desc = hi ? m.descriptionHi || m.description : m.description;
 
               return (
                 <motion.div
-                  key={m.id || idx}
-                  initial={{ opacity: 0, y: 30, scale: 0.96 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  key={m.id || i}
+                  variants={rise}
+                  initial="hidden"
+                  whileInView="show"
                   viewport={{ once: true, margin: '-60px' }}
-                  transition={{ duration: 0.7, delay: idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                  className="relative flex flex-col lg:flex-row items-center justify-between gap-6 pl-10 lg:pl-0"
+                  className="relative grid grid-cols-1 pl-12 lg:grid-cols-[1fr_64px_1fr] lg:pl-0"
                 >
-                  {/* Central Magical Node Indicator with Ring & Particle Flare */}
-                  <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center justify-center z-20">
-                    <div className="relative flex items-center justify-center">
-                      <div className={`w-4 h-4 rounded-full ${statusMeta.dotBg}`} />
-                      <div className="absolute -inset-2 rounded-full border border-amber-400/40 animate-ping opacity-30" />
-                    </div>
-                  </div>
-                  <div className="lg:hidden absolute left-4 -translate-x-1/2 top-5 z-20">
-                    <div className="relative flex items-center justify-center">
-                      <div className={`w-4 h-4 rounded-full ${statusMeta.dotBg}`} />
-                      <div className="absolute -inset-2 rounded-full border border-amber-400/40 animate-ping opacity-30" />
-                    </div>
+                  {/* Node */}
+                  <div className="absolute left-4 top-8 z-10 -translate-x-1/2 lg:left-1/2">
+                    <Node kind={kind} />
                   </div>
 
-                  {/* Card Container */}
-                  <div className={`w-full lg:w-[46%] ${isEven ? 'lg:pr-8' : 'lg:order-2 lg:pl-8'}`}>
-                    <MysticTiltCard
-                      glowTheme={statusMeta.theme}
-                      className="p-5 bg-slate-950/75 backdrop-blur-xl space-y-3 border border-amber-500/20 hover:border-amber-400/50 transition-all shadow-xl"
-                    >
-                      {/* Year / Month & Status Badge */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-mono font-bold text-amber-300 tracking-wider px-2 py-0.5 rounded bg-slate-900/80 border border-amber-500/30">
+                  {/* Card */}
+                  <div
+                    onMouseMove={onMove}
+                    className={`group relative overflow-hidden rounded-[22px] border p-6 transition-[border-color,box-shadow] duration-300 hover:border-[color:var(--line-strong)] hover:shadow-[0_30px_70px_-30px_rgba(0,0,0,0.9),0_0_60px_-25px_rgba(212,175,95,0.4)] sm:p-7 ${
+                      left ? 'lg:col-start-1' : 'lg:col-start-3'
+                    }`}
+                    style={{ background: 'var(--panel)', borderColor: 'var(--line)' }}
+                  >
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      style={{
+                        background:
+                          'radial-gradient(340px circle at var(--mx, 50%) var(--my, 50%), rgba(212,175,95,0.14), transparent 60%)',
+                      }}
+                    />
+
+                    <div className="relative">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.28em]" style={{ color: 'var(--gold)' }}>
                           {m.yearMonth || m.phase}
                         </span>
-                        <div className={`flex items-center gap-1.5 text-xs font-mono ${statusMeta.color}`}>
-                          {statusMeta.icon}
-                          <span>{mode === 'hi' ? m.statusTextHi || m.statusText : m.statusText}</span>
-                        </div>
+                        <span
+                          className="text-[9px] font-semibold uppercase tracking-[0.22em]"
+                          style={{ color: kind === 'future' ? 'var(--muted)' : 'var(--gold-soft)' }}
+                        >
+                          {label}
+                        </span>
                       </div>
 
-                      {/* Title & 1-Line Description */}
-                      <div>
-                        <h3 className="font-cyber font-bold text-lg text-white">
-                          {mode === 'hi' ? m.titleHi || m.title : m.title}
-                        </h3>
-                        <p className="text-xs text-slate-300 mt-1 leading-relaxed font-sans line-clamp-1">
-                          {mode === 'hi' ? m.descriptionHi || m.description : m.description}
-                        </p>
-                      </div>
+                      <h3
+                        className="mt-4 text-[26px] font-normal leading-tight transition-colors duration-300 group-hover:text-[color:var(--gold-soft)]"
+                        style={{ ...SERIF, color: 'var(--text)' }}
+                      >
+                        {title}
+                      </h3>
+                      <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>
+                        {desc}
+                      </p>
 
-                      {/* Highlights / Topics if any */}
                       {m.topics && m.topics.length > 0 && (
-                        <div className="pt-2 border-t border-slate-800/80 flex flex-wrap gap-1.5 text-[10px] font-mono text-slate-400">
-                          {m.topics.map((t, tIdx) => (
-                            <span key={tIdx} className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
-                              {t}
-                            </span>
+                        <ul className="mt-5 flex flex-wrap gap-2 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
+                          {m.topics.map((topic, k) => (
+                            <li
+                              key={k}
+                              className="rounded-full border px-3 py-1 text-[10px] font-medium tracking-wide"
+                              style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
+                            >
+                              {topic}
+                            </li>
                           ))}
-                        </div>
+                        </ul>
                       )}
-                    </MysticTiltCard>
+                    </div>
                   </div>
-                  <div className={`hidden lg:block w-[46%] ${isEven ? 'order-2' : 'order-1'}`} />
                 </motion.div>
               );
             })}

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 
 export const CyberBackground: React.FC = () => {
@@ -6,111 +7,199 @@ export const CyberBackground: React.FC = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let animationFrameId: number;
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
-
-    const handleResize = () => {
-      if (!canvas) return;
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', handleResize);
-
-    // Particle pool
-    const particleCount = Math.min(width < 768 ? 25 : 55, 60);
-    const particles = Array.from({ length: particleCount }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      size: Math.random() * 2 + 0.8,
-      speedY: -(Math.random() * 0.4 + 0.1),
-      speedX: (Math.random() - 0.5) * 0.2,
-      opacity: Math.random() * 0.5 + 0.2,
-      color: Math.random() > 0.4 ? 'rgba(6, 182, 212,' : 'rgba(168, 85, 247,',
-    }));
-
+    let animationFrameId = 0;
+    let width = 0;
+    let height = 0;
     let tick = 0;
-    const render = () => {
-      tick += 0.01;
-      ctx.clearRect(0, 0, width, height);
+    let isVisible = !document.hidden;
 
-      // Deep cyberpunk gradient
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-      bgGrad.addColorStop(0, '#030712');
-      bgGrad.addColorStop(0.5, '#050a18');
-      bgGrad.addColorStop(1, '#02040a');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, width, height);
+    const GOLD = '#D4AF37';
 
-      // Ambient radial neon lighting pools
-      const cyanGlow = ctx.createRadialGradient(
-        width * 0.2,
-        height * 0.3,
-        10,
-        width * 0.2,
-        height * 0.3,
-        width * 0.45
+    const resizeCanvas = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+
+      width = window.innerWidth;
+      height = window.innerHeight;
+
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    resizeCanvas();
+
+    interface Particle {
+      x: number;
+      y: number;
+      size: number;
+      speedY: number;
+      speedX: number;
+      opacity: number;
+      phase: number;
+    }
+
+    const isMobile = () => width < 768;
+
+    const particleCount = () =>
+      isMobile() ? 22 : 45;
+
+    let particles: Particle[] = [];
+
+    const createParticles = () => {
+      particles = Array.from(
+        { length: particleCount() },
+        () => ({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          size: Math.random() * 1.3 + 0.4,
+          speedY: Math.random() * 0.22 + 0.06,
+          speedX: (Math.random() - 0.5) * 0.12,
+          opacity: Math.random() * 0.35 + 0.12,
+          phase: Math.random() * Math.PI * 2,
+        })
       );
-      cyanGlow.addColorStop(0, 'rgba(6, 182, 212, 0.08)');
-      cyanGlow.addColorStop(1, 'rgba(6, 182, 212, 0)');
-      ctx.fillStyle = cyanGlow;
+    };
+
+    createParticles();
+
+    const drawBackground = () => {
+      // Deep matte black base
+      ctx.fillStyle = '#050505';
       ctx.fillRect(0, 0, width, height);
 
-      const purpleGlow = ctx.createRadialGradient(
-        width * 0.8,
-        height * 0.7,
-        10,
-        width * 0.8,
-        height * 0.7,
-        width * 0.45
+      // Subtle luxury gold ambient lighting
+      const goldGlow = ctx.createRadialGradient(
+        width * 0.78,
+        height * 0.22,
+        0,
+        width * 0.78,
+        height * 0.22,
+        width * 0.58
       );
-      purpleGlow.addColorStop(0, 'rgba(139, 92, 246, 0.07)');
-      purpleGlow.addColorStop(1, 'rgba(139, 92, 246, 0)');
-      ctx.fillStyle = purpleGlow;
+
+      goldGlow.addColorStop(0, 'rgba(212, 175, 55, 0.075)');
+      goldGlow.addColorStop(0.45, 'rgba(184, 134, 11, 0.025)');
+      goldGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = goldGlow;
       ctx.fillRect(0, 0, width, height);
 
-      if (document.hidden) {
-        animationFrameId = requestAnimationFrame(render);
-        return;
-      }
+      // Soft secondary golden light
+      const secondaryGlow = ctx.createRadialGradient(
+        width * 0.12,
+        height * 0.82,
+        0,
+        width * 0.12,
+        height * 0.82,
+        width * 0.48
+      );
 
-      // Cyber particles
-      const isMobile = width < 768;
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.y += p.speedY;
-        p.x += p.speedX;
-        if (p.y < 0) {
-          p.y = height + 10;
-          p.x = Math.random() * width;
+      secondaryGlow.addColorStop(0, 'rgba(212, 175, 55, 0.045)');
+      secondaryGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = secondaryGlow;
+      ctx.fillRect(0, 0, width, height);
+    };
+
+    const drawParticles = () => {
+      const mobile = isMobile();
+
+      particles.forEach((particle, index) => {
+        particle.y -= particle.speedY;
+        particle.x += particle.speedX;
+
+        if (particle.y < -10) {
+          particle.y = height + 10;
+          particle.x = Math.random() * width;
         }
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
+
+        if (particle.x < -5) particle.x = width + 5;
+        if (particle.x > width + 5) particle.x = -5;
+
+        const pulse =
+          0.75 + Math.sin(tick + particle.phase + index) * 0.25;
+
+        const opacity = particle.opacity * pulse;
 
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `${p.color} ${p.opacity * (0.8 + Math.sin(tick + i) * 0.2)})`;
-        if (!isMobile) {
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = p.color === 'rgba(6, 182, 212,' ? '#06b6d4' : '#a855f7';
+        ctx.arc(
+          particle.x,
+          particle.y,
+          particle.size,
+          0,
+          Math.PI * 2
+        );
+
+        ctx.fillStyle = `rgba(212, 175, 55, ${opacity})`;
+
+        if (!mobile) {
+          ctx.shadowBlur = 5;
+          ctx.shadowColor = GOLD;
         }
+
         ctx.fill();
-      }
-      if (!isMobile) {
-        ctx.shadowBlur = 0;
-      }
+      });
+
+      ctx.shadowBlur = 0;
+    };
+
+    const render = () => {
+      if (!isVisible) return;
+
+      tick += 0.012;
+
+      drawBackground();
+      drawParticles();
 
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    const handleVisibilityChange = () => {
+      isVisible = !document.hidden;
+
+      cancelAnimationFrame(animationFrameId);
+
+      if (isVisible) {
+        render();
+      }
+    };
+
+    const handleResize = () => {
+      resizeCanvas();
+      createParticles();
+      drawBackground();
+    };
+
+    document.addEventListener(
+      'visibilitychange',
+      handleVisibilityChange
+    );
+
+    window.addEventListener('resize', handleResize);
+
+    drawBackground();
+
+    if (isVisible) {
+      render();
+    }
 
     return () => {
-      window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
+
+      window.removeEventListener('resize', handleResize);
+
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibilityChange
+      );
     };
   }, []);
 
@@ -118,7 +207,10 @@ export const CyberBackground: React.FC = () => {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.95 }}
+      style={{
+        opacity: 1,
+        backgroundColor: '#050505',
+      }}
       aria-hidden="true"
     />
   );

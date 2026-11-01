@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence, type Variants } from 'motion/react';
+import confetti from 'canvas-confetti';
+import { ArrowUpRight, Copy, Check } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useImages } from '../../context/ImageContext';
 import { sound } from '../audio/SoundEffects';
@@ -11,426 +13,367 @@ import {
   handleFirestoreError,
   OperationType,
 } from '../../firebase';
-import confetti from 'canvas-confetti';
-import { MysticTextReveal } from '../vfx/MysticTextReveal';
-import { MysticTiltCard } from '../vfx/MysticTiltCard';
-import { BlackMagicSmoke } from '../vfx/BlackMagicSmoke';
-import {
-  Mail,
-  Copy,
-  Check,
-  Send,
-  Github,
-  Instagram,
-  MessageCircle,
-  PhoneCall,
-  ExternalLink,
-  Sparkles,
-  AlertCircle
-} from 'lucide-react';
 
+/* Fonts (index.html में एक बार):
+   https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@400;500;600&display=swap */
+
+const TOKENS = {
+  '--gold': '#D4AF5F',
+  '--gold-soft': '#F1DFA8',
+  '--gold-deep': '#A8823A',
+  '--text': '#F6F0E4',
+  '--muted': '#9A8F7C',
+  '--panel': '#0C0B09',
+  '--line': 'rgba(212,175,95,0.2)',
+  '--line-strong': 'rgba(212,175,95,0.55)',
+} as React.CSSProperties;
+
+const SERIF: React.CSSProperties = { fontFamily: '"Cormorant Garamond", Georgia, serif' };
+const GOLD_TEXT: React.CSSProperties = {
+  backgroundImage: 'linear-gradient(120deg, var(--gold-soft) 0%, var(--gold) 50%, var(--gold-deep) 100%)',
+  WebkitBackgroundClip: 'text',
+  backgroundClip: 'text',
+  color: 'transparent',
+};
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+const rise: Variants = {
+  hidden: { opacity: 0, y: 22 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: EASE } },
+};
+
+const RATE_LIMIT_MS = 20000;
+
+const DEFAULT_CONTACT = {
+  email: 'mohityadav802316@gmail.com',
+  githubUrl: 'https://github.com',
+  location: 'Bihar, India',
+  locationHi: 'बिहार, भारत',
+  responseAvailability: 'Open for learning collaborations and tech discussions',
+  responseAvailabilityHi: 'तकनीकी सहयोग और चर्चा के लिए हमेशा उपलब्ध',
+  whatsappNumber: '+919153086540',
+  instagramUrl: 'https://instagram.com/mohityadav',
+  phoneNumber: '',
+  isPhonePublic: false,
+};
+
+/* ============================ SMALL PARTS ============================ */
+const Label: React.FC<{ children: React.ReactNode; htmlFor?: string; muted?: boolean }> = ({
+  children,
+  htmlFor,
+  muted,
+}) => (
+  <label
+    htmlFor={htmlFor}
+    className="block text-[9px] font-semibold uppercase tracking-[0.3em]"
+    style={{ color: muted ? 'var(--muted)' : 'var(--gold)' }}
+  >
+    {children}
+  </label>
+);
+
+const ChannelRow: React.FC<{
+  label: string;
+  value: string;
+  href: string;
+  external?: boolean;
+}> = ({ label, value, href, external = true }) => (
+  <a
+    href={href}
+    {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+    onClick={() => sound.playClick()}
+    className="group flex items-center justify-between gap-4 border-b py-5 transition-colors"
+    style={{ borderColor: 'var(--line)' }}
+  >
+    <div className="min-w-0">
+      <span className="block text-[9px] font-semibold uppercase tracking-[0.3em]" style={{ color: 'var(--muted)' }}>
+        {label}
+      </span>
+      <span
+        className="mt-1 block truncate text-2xl font-normal transition-colors duration-300 group-hover:text-[color:var(--gold-soft)]"
+        style={{ ...SERIF, color: 'var(--text)' }}
+      >
+        {value}
+      </span>
+    </div>
+    <ArrowUpRight
+      className="h-5 w-5 shrink-0 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+      style={{ color: 'var(--gold)' }}
+      strokeWidth={1.4}
+    />
+  </a>
+);
+
+const inputCls =
+  'w-full border-0 border-b bg-transparent px-0 py-3 text-base outline-none transition-colors placeholder:text-[color:var(--muted)]/60 focus:border-[color:var(--gold)]';
+
+/* ================================ MAIN ================================ */
 export const ContactSection: React.FC = () => {
   const { mode } = useLanguage();
   const { siteSettings } = useImages();
+  const hi = mode === 'hi';
+  const t = (en: string, h: string) => (hi ? h : en);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [copiedEmail, setCopiedEmail] = useState(false);
-  const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
+  const [sending, setSending] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const lastSubmit = useRef(0);
 
-  const contactData = siteSettings.contact || {
-    email: 'mohityadav802316@gmail.com',
-    githubUrl: 'https://github.com',
-    location: 'Bihar, India',
-    locationHi: 'बिहार, भारत',
-    responseAvailability: 'Open for learning collaborations and tech discussions',
-    responseAvailabilityHi: 'तकनीकी सहयोग और चर्चा के लिए हमेशा उपलब्ध',
-    whatsappNumber: '+919153086540',
-    instagramUrl: 'https://instagram.com/mohityadav',
-    phoneNumber: '',
-    isPhonePublic: false,
-  };
+  const c = { ...DEFAULT_CONTACT, ...(siteSettings.contact || {}) };
+  const officialEmail = c.email || DEFAULT_CONTACT.email;
+  const waNumber = (c.whatsappNumber || DEFAULT_CONTACT.whatsappNumber).replace(/[^0-9]/g, '');
+  const insta = c.instagramUrl || DEFAULT_CONTACT.instagramUrl;
+  const instaHref = insta.startsWith('http') ? insta : `https://instagram.com/${insta.replace('@', '')}`;
+  const instaLabel = insta.replace(/^https?:\/\/(www\.)?instagram\.com\//, '@').replace(/\/$/, '');
+  const phone = c.phoneNumber || '';
+  const showPhone = Boolean(c.isPhonePublic && phone);
 
-  const officialEmail = contactData.email || 'mohityadav802316@gmail.com';
-  const whatsappNumber = contactData.whatsappNumber || '+919153086540';
-  const instagramUrl = contactData.instagramUrl || 'https://instagram.com/mohityadav';
-  const phoneNumber = contactData.phoneNumber || '';
-  const isPhonePublic = contactData.isPhonePublic ?? false;
-
-  const handleCopyEmail = () => {
+  const handleCopy = async () => {
     sound.playClick();
-    navigator.clipboard.writeText(officialEmail);
-    setCopiedEmail(true);
-    setTimeout(() => setCopiedEmail(false), 2500);
+    try {
+      await navigator.clipboard.writeText(officialEmail);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      /* clipboard blocked */
+    }
   };
-
-  const cleanWaNumber = whatsappNumber.replace(/[^0-9]/g, '');
-  const cleanPhone = phoneNumber.replace(/[^0-9+]/g, '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     sound.playClick();
-    setErrorMessage('');
+    setError('');
+    setSuccess(false);
 
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
-    const trimmedMessage = message.trim();
+    const n = name.trim();
+    const em = email.trim();
+    const msg = message.trim();
 
-    if (trimmedName.length < 2 || trimmedName.length > 100) {
-      setErrorMessage(
-        mode === 'hi'
-          ? 'कृपया 2 से 100 वर्णों के बीच का नाम दर्ज करें।'
-          : 'Please enter a valid name between 2 and 100 characters.'
-      );
-      return;
+    if (n.length < 2 || n.length > 100) {
+      return setError(t('Please enter a name between 2 and 100 characters.', 'कृपया 2 से 100 वर्णों के बीच का नाम दर्ज करें।'));
+    }
+    if (msg.length < 2 || msg.length > 2000) {
+      return setError(t('Please enter a message between 2 and 2000 characters.', 'कृपया 2 से 2000 वर्णों के बीच का संदेश दर्ज करें।'));
+    }
+    if (Date.now() - lastSubmit.current < RATE_LIMIT_MS) {
+      return setError(t('Please wait 20 seconds before sending another message.', 'कृपया दूसरा संदेश भेजने से पहले 20 सेकंड प्रतीक्षा करें।'));
     }
 
-    if (trimmedMessage.length < 2 || trimmedMessage.length > 2000) {
-      setErrorMessage(
-        mode === 'hi'
-          ? 'कृपया 2 से 2000 वर्णों के बीच का संदेश दर्ज करें।'
-          : 'Please enter a message between 2 and 2000 characters.'
-      );
-      return;
-    }
-
-    const now = Date.now();
-    if (now - lastSubmitTime < 20000) {
-      setErrorMessage(
-        mode === 'hi'
-          ? 'कृपया दूसरा संदेश भेजने से पहले 20 सेकंड प्रतीक्षा करें।'
-          : 'Rate limit active: Please wait 20 seconds before transmitting another message.'
-      );
-      return;
-    }
-
-    setIsSubmitting(true);
+    setSending(true);
     try {
-      const messagesRef = collection(db, 'messages');
-      const payload: Record<string, any> = {
-        name: trimmedName,
-        message: trimmedMessage,
+      const payload: Record<string, unknown> = {
+        name: n,
+        message: msg,
         createdAt: serverTimestamp(),
         read: false,
         archived: false,
         source: 'portfolio_contact_form',
       };
+      if (em) payload.email = em;
 
-      if (trimmedEmail) {
-        payload.email = trimmedEmail;
-      }
+      await addDoc(collection(db, 'messages'), payload);
 
-      await addDoc(messagesRef, payload);
       sound.playSuccess();
-      setSubmitSuccess(true);
-      setLastSubmitTime(Date.now());
+      lastSubmit.current = Date.now();
+      setSuccess(true);
       setName('');
       setEmail('');
       setMessage('');
-
       confetti({
         particleCount: 50,
         spread: 60,
         origin: { y: 0.8 },
-        colors: ['#f59e0b', '#e11d48', '#fbbf24'],
+        colors: ['#D4AF5F', '#F1DFA8', '#A8823A'],
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error saving visitor message:', err);
-      setErrorMessage(
-        mode === 'hi'
-          ? 'संदेश भेजने में विफल। कृपया सीधे ईमेल करें: ' + officialEmail
-          : 'Transmission error. Please email directly to ' + officialEmail
+      setError(
+        t(
+          `Could not send your message. Please email me directly at ${officialEmail}`,
+          `संदेश भेजा नहीं जा सका। कृपया सीधे ईमेल करें: ${officialEmail}`
+        )
       );
       try {
         handleFirestoreError(err, OperationType.CREATE, 'messages');
-      } catch {}
+      } catch {
+        /* already logged */
+      }
     } finally {
-      setIsSubmitting(false);
+      setSending(false);
     }
   };
 
   return (
     <section
       id="contact"
-      className="py-20 px-4 sm:px-6 lg:px-8 relative min-h-screen flex flex-col justify-center overflow-hidden select-none"
+      style={TOKENS}
+      className="relative overflow-hidden px-5 py-24 sm:px-8 sm:py-28 lg:px-10"
     >
-      <div className="max-w-6xl mx-auto w-full space-y-12 relative z-10">
-        {/* Header: Pure Unboxed Typography */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="space-y-2 text-left"
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 left-1/2 h-[420px] w-[780px] -translate-x-1/2 opacity-[0.14] blur-[140px]"
+        style={{ background: 'radial-gradient(circle, var(--gold) 0%, transparent 70%)' }}
+      />
+
+      <div className="relative mx-auto max-w-6xl">
+        <motion.header
+          variants={rise}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-60px' }}
+          className="mb-14 max-w-2xl sm:mb-16"
         >
-          <div className="inline-flex items-center gap-2 text-xs font-mono tracking-widest text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span>SCENE 09 • DIRECT CONTACT &amp; UPLINK</span>
-          </div>
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: 'var(--gold)' }}>
+            {t('Contact', 'संपर्क')}
+          </span>
+          <h2 className="mt-4 text-4xl font-light leading-[1.05] sm:text-5xl lg:text-6xl" style={{ ...SERIF, ...GOLD_TEXT }}>
+            {t("Let's talk", 'बात करते हैं')}
+          </h2>
+          <p className="mt-5 text-base leading-relaxed" style={{ color: 'var(--muted)' }}>
+            {t(
+              'WhatsApp, Instagram or email, whichever is easiest for you.',
+              'व्हाट्सएप, इंस्टाग्राम या ईमेल, जो आपके लिए आसान हो।'
+            )}
+          </p>
+        </motion.header>
 
-          <BlackMagicSmoke theme="crimson">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-cyber font-black tracking-wide text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.9)]">
-              <MysticTextReveal
-                text={mode === 'hi' ? 'सीधा संपर्क एवं सोशल लिंक्स' : 'Direct Contact & Social Uplink'}
-                magicTheme="cyan"
-                className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-amber-200 to-rose-300"
-              />
-            </h2>
-          </BlackMagicSmoke>
-
-          <BlackMagicSmoke theme="multi">
-            <p className="text-sm sm:text-base font-mono text-cyan-200/90 max-w-2xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-              {mode === 'hi'
-                ? 'व्हाट्सएप, इंस्टाग्राम या सीधे ईमेल से जुड़ें।'
-                : 'Tap below to launch WhatsApp, Instagram, or direct Email for instant collaboration.'}
-            </p>
-          </BlackMagicSmoke>
-        </motion.div>
-
-        {/* Big Glowing Direct Action Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* WhatsApp Button */}
-          <motion.a
-            href={`https://wa.me/${cleanWaNumber}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => sound.playClick()}
-            whileHover={{ scale: 1.02, y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/80 via-slate-950/90 to-emerald-950/60 border border-emerald-500/50 hover:border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.25)] flex items-center justify-between group transition-all"
+        <div className="grid grid-cols-1 gap-14 lg:grid-cols-12 lg:gap-16">
+          {/* ---------- Channels ---------- */}
+          <motion.div
+            variants={rise}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-40px' }}
+            className="lg:col-span-5"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                <MessageCircle className="w-6 h-6" />
-              </div>
-              <div className="text-left">
-                <h4 className="font-cyber font-bold text-white text-base group-hover:text-emerald-200 transition">
-                  WhatsApp
-                </h4>
-                <p className="text-xs font-mono text-emerald-300/80">
-                  {mode === 'hi' ? 'सीधा चैट शुरू करें' : 'Start Instant Chat'}
-                </p>
-              </div>
+            <div className="border-t" style={{ borderColor: 'var(--line)' }}>
+              <ChannelRow label="WhatsApp" value={t('Start a chat', 'चैट शुरू करें')} href={`https://wa.me/${waNumber}`} />
+              <ChannelRow label="Instagram" value={instaLabel || 'Instagram'} href={instaHref} />
+              <ChannelRow label={t('Email', 'ईमेल')} value={officialEmail} href={`mailto:${officialEmail}`} external={false} />
+              {showPhone && (
+                <ChannelRow label={t('Phone', 'फ़ोन')} value={phone} href={`tel:${phone.replace(/[^0-9+]/g, '')}`} external={false} />
+              )}
+              {c.githubUrl && <ChannelRow label="GitHub" value={t('View profile', 'प्रोफ़ाइल देखें')} href={c.githubUrl} />}
             </div>
-            <ExternalLink className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />
-          </motion.a>
 
-          {/* Instagram Button */}
-          <motion.a
-            href={instagramUrl.startsWith('http') ? instagramUrl : `https://instagram.com/${instagramUrl.replace('@', '')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => sound.playClick()}
-            whileHover={{ scale: 1.02, y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            className="p-5 rounded-2xl bg-gradient-to-br from-rose-950/80 via-slate-950/90 to-rose-950/60 border border-rose-500/50 hover:border-rose-400 shadow-[0_0_25px_rgba(244,63,94,0.25)] flex items-center justify-between group transition-all"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 group-hover:scale-110 transition-transform">
-                <Instagram className="w-6 h-6" />
-              </div>
-              <div className="text-left">
-                <h4 className="font-cyber font-bold text-white text-base group-hover:text-rose-200 transition">
-                  Instagram
-                </h4>
-                <p className="text-xs font-mono text-rose-300/80">
-                  {mode === 'hi' ? 'प्रोफ़ाइल देखें व DM करें' : 'Follow & DM Profile'}
-                </p>
-              </div>
-            </div>
-            <ExternalLink className="w-4 h-4 text-rose-400 group-hover:translate-x-1 transition-transform" />
-          </motion.a>
-
-          {/* Email Button */}
-          <motion.a
-            href={`mailto:${officialEmail}`}
-            onClick={() => sound.playClick()}
-            whileHover={{ scale: 1.02, y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            className="p-5 rounded-2xl bg-gradient-to-br from-amber-950/80 via-slate-950/90 to-amber-950/60 border border-amber-500/50 hover:border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.25)] flex items-center justify-between group transition-all"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-                <Mail className="w-6 h-6" />
-              </div>
-              <div className="text-left">
-                <h4 className="font-cyber font-bold text-white text-base group-hover:text-amber-200 transition">
-                  Email
-                </h4>
-                <p className="text-xs font-mono text-amber-300/80 truncate max-w-[160px]">
-                  {officialEmail}
-                </p>
-              </div>
-            </div>
-            <ExternalLink className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
-          </motion.a>
-
-          {/* Phone Button: ONLY displayed if admin enabled isPhonePublic */}
-          {isPhonePublic && phoneNumber && (
-            <motion.a
-              href={`tel:${cleanPhone}`}
-              onClick={() => sound.playClick()}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              className="p-5 rounded-2xl bg-gradient-to-br from-cyan-950/80 via-slate-950/90 to-cyan-950/60 border border-cyan-500/50 hover:border-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.25)] flex items-center justify-between group transition-all sm:col-span-2 lg:col-span-3"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
-                  <PhoneCall className="w-6 h-6" />
-                </div>
-                <div className="text-left">
-                  <h4 className="font-cyber font-bold text-white text-base group-hover:text-cyan-200 transition">
-                    Direct Phone Call / फोन कॉल
-                  </h4>
-                  <p className="text-xs font-mono text-cyan-300/80">
-                    {phoneNumber}
-                  </p>
-                </div>
-              </div>
-              <ExternalLink className="w-4 h-4 text-cyan-400 group-hover:translate-x-1 transition-transform" />
-            </motion.a>
-          )}
-        </div>
-
-        {/* Private Message Form & Email Copy */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-4">
-          <div className="lg:col-span-5 space-y-4 text-left">
-            <MysticTiltCard
-              glowTheme="cyan"
-              className="p-6 bg-slate-950/70 backdrop-blur-xl border border-cyan-500/20 shadow-xl space-y-4"
-            >
-              <div className="space-y-2">
-                <h3 className="font-cyber font-bold text-xl text-white">
-                  {mode === 'hi' ? 'सीधा संपर्क चैनल' : 'Direct Uplink Channels'}
-                </h3>
-                <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                  {mode === 'hi' ? contactData.locationHi : contactData.location} • {mode === 'hi' ? contactData.responseAvailabilityHi : contactData.responseAvailability}
-                </p>
-              </div>
-
-              {/* Copy Email Button */}
+            <div className="mt-8 space-y-4">
               <button
-                onClick={handleCopyEmail}
-                className="w-full p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-xs font-mono text-cyan-300 flex items-center justify-between transition cursor-pointer"
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex items-center gap-2.5 rounded-full border px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.22em] transition-colors cursor-pointer hover:text-[color:var(--gold-soft)]"
+                style={{ borderColor: 'var(--line-strong)', color: copied ? 'var(--gold-soft)' : 'var(--text)' }}
               >
-                <div className="flex items-center gap-2 truncate">
-                  <Mail className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                  <span className="truncate">{officialEmail}</span>
-                </div>
-                <span className="text-[11px] text-amber-400 font-bold ml-2 flex items-center gap-1">
-                  {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedEmail ? (mode === 'hi' ? 'कॉपी हो गया!' : 'Copied!') : (mode === 'hi' ? 'कॉपी करें' : 'Copy')}</span>
-                </span>
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                {copied ? t('Email copied', 'ईमेल कॉपी हुआ') : t('Copy email', 'ईमेल कॉपी करें')}
               </button>
 
-              {contactData.githubUrl && (
-                <a
-                  href={contactData.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-xs font-mono text-slate-300 flex items-center justify-between transition"
-                >
-                  <div className="flex items-center gap-2">
-                    <Github className="w-4 h-4 text-cyan-400" />
-                    <span>GitHub Profile</span>
-                  </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-                </a>
-              )}
-            </MysticTiltCard>
-          </div>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>
+                {hi ? c.locationHi : c.location}
+                <span className="mx-2" style={{ color: 'var(--line-strong)' }}>/</span>
+                {hi ? c.responseAvailabilityHi : c.responseAvailability}
+              </p>
+            </div>
+          </motion.div>
 
-          {/* Direct Private Message Form */}
-          <div className="lg:col-span-7">
-            <MysticTiltCard
-              glowTheme="gold"
-              className="p-6 bg-slate-950/75 backdrop-blur-xl border border-amber-500/20 shadow-xl space-y-4"
+          {/* ---------- Form ---------- */}
+          <motion.div
+            variants={rise}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ delay: 0.1 }}
+            className="lg:col-span-7"
+          >
+            <div
+              className="rounded-[26px] border p-7 sm:p-10"
+              style={{
+                background: 'var(--panel)',
+                borderColor: 'var(--line-strong)',
+                boxShadow: '0 40px 100px -40px #000, 0 0 70px -40px rgba(212,175,95,0.35)',
+              }}
             >
-              <h3 className="font-cyber font-bold text-lg text-white text-left">
-                {mode === 'hi' ? 'गोपनीय संदेश भेजें' : 'Transmit Encrypted Message'}
+              <h3 className="text-3xl font-light" style={{ ...SERIF, color: 'var(--text)' }}>
+                {t('Send a message', 'संदेश भेजें')}
               </h3>
 
-              {errorMessage && (
-                <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs font-mono flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{errorMessage}</span>
-                </div>
-              )}
+              <AnimatePresence mode="wait">
+                {(error || success) && (
+                  <motion.p
+                    key={error ? 'err' : 'ok'}
+                    role={error ? 'alert' : 'status'}
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="mt-5 border-l-2 py-1 pl-4 text-sm leading-relaxed"
+                    style={{
+                      borderColor: error ? '#C9695C' : 'var(--gold)',
+                      color: error ? '#E7A89F' : 'var(--gold-soft)',
+                    }}
+                  >
+                    {error ||
+                      t('Message received. Mohit will reply soon.', 'संदेश मिल गया। मोहित जल्द ही उत्तर देंगे।')}
+                  </motion.p>
+                )}
+              </AnimatePresence>
 
-              {submitSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs font-mono flex items-center gap-2">
-                  <Check className="w-4 h-4 flex-shrink-0" />
-                  <span>
-                    {mode === 'hi'
-                      ? 'संदेश सफलतापूर्वक प्राप्त हुआ! Mohit जल्द ही उत्तर देंगे।'
-                      : 'Transmission received! Mohit will review and respond shortly.'}
-                  </span>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-4 text-left">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-mono text-slate-300 uppercase block">
-                      {mode === 'hi' ? 'नाम *' : 'Name *'}
-                    </label>
+              <form onSubmit={handleSubmit} className="mt-7 space-y-7">
+                <div className="grid grid-cols-1 gap-7 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="c-name">{t('Name', 'नाम')} *</Label>
                     <input
+                      id="c-name"
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder={mode === 'hi' ? 'आपका नाम' : 'Your Name'}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-amber-500 text-sm text-white placeholder-slate-600 outline-none"
+                      placeholder={t('Your name', 'आपका नाम')}
                       required
+                      className={inputCls}
+                      style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
                     />
                   </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-mono text-slate-300 uppercase block">
-                      {mode === 'hi' ? 'ईमेल (वैकल्पिक)' : 'Email (Optional)'}
-                    </label>
+                  <div>
+                    <Label htmlFor="c-email">{t('Email (optional)', 'ईमेल (वैकल्पिक)')}</Label>
                     <input
+                      id="c-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@domain.com"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-amber-500 text-sm text-white placeholder-slate-600 outline-none font-mono"
+                      className={inputCls}
+                      style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-mono text-slate-300 uppercase block">
-                    {mode === 'hi' ? 'संदेश *' : 'Message *'}
-                  </label>
+                <div>
+                  <Label htmlFor="c-msg">{t('Message', 'संदेश')} *</Label>
                   <textarea
+                    id="c-msg"
                     rows={4}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder={
-                      mode === 'hi'
-                        ? 'प्रोजेक्ट सहयोग, तकनीकी प्रश्न या सुझाव लिखें...'
-                        : 'Collaboration ideas, queries, or AI engineering discussion...'
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-amber-500 text-sm text-white placeholder-slate-600 outline-none resize-none font-sans"
+                    placeholder={t('Project ideas, questions or feedback', 'प्रोजेक्ट के विचार, सवाल या सुझाव')}
                     required
+                    className={`${inputCls} resize-none`}
+                    style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
                   />
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-cyan-500 hover:from-amber-400 hover:to-cyan-400 text-slate-950 font-cyber font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  disabled={sending}
+                  className="w-full rounded-full py-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#14100A] transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-50 cursor-pointer shadow-[0_8px_30px_rgba(212,175,95,0.28)]"
+                  style={{ background: 'linear-gradient(120deg, var(--gold-soft), var(--gold))' }}
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{isSubmitting ? (mode === 'hi' ? 'भेज रहा है...' : 'Transmitting...') : (mode === 'hi' ? 'संदेश भेजें' : 'Send Message')}</span>
+                  {sending ? t('Sending...', 'भेज रहा है...') : t('Send Message', 'संदेश भेजें')}
                 </button>
               </form>
-            </MysticTiltCard>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>

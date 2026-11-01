@@ -1,470 +1,420 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, type Variants } from 'motion/react';
+import { Search, Copy, Check, ExternalLink, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { sound } from '../audio/SoundEffects';
-import {
-  UNIVERSAL_TECH_REGISTRY,
-  UNIVERSAL_TECH_CATEGORIES,
-  UniversalTechItem,
-  UniversalTechCategory,
-} from '../../data/universalTechRegistry';
+import { UNIVERSAL_TECH_REGISTRY, UNIVERSAL_TECH_CATEGORIES } from '../../data/universalTechRegistry';
 import { PremiumBrandLogo } from '../vfx/PremiumBrandLogo';
 import { Lens3DViewer } from '../three/Lens3DViewer';
-import { MysticTextReveal } from '../vfx/MysticTextReveal';
-import {
-  Search,
-  Sparkles,
-  ExternalLink,
-  CheckCircle2,
-  Copy,
-  Check,
-  Terminal,
-  Cpu,
-  Layers,
-  Database,
-  Cloud,
-  Code,
-  Shield,
-  ArrowRight,
-  Filter,
-} from 'lucide-react';
+
+/* Fonts (index.html में एक बार):
+   https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@400;500;600&display=swap */
+
+const TOKENS = {
+  '--gold': '#D4AF5F',
+  '--gold-soft': '#F1DFA8',
+  '--gold-deep': '#A8823A',
+  '--text': '#F6F0E4',
+  '--muted': '#9A8F7C',
+  '--panel': '#0C0B09',
+  '--panel-2': '#100E0B',
+  '--line': 'rgba(212,175,95,0.2)',
+  '--line-strong': 'rgba(212,175,95,0.55)',
+} as React.CSSProperties;
+
+const SERIF: React.CSSProperties = { fontFamily: '"Cormorant Garamond", Georgia, serif' };
+const GOLD_TEXT: React.CSSProperties = {
+  backgroundImage: 'linear-gradient(120deg, var(--gold-soft) 0%, var(--gold) 50%, var(--gold-deep) 100%)',
+  WebkitBackgroundClip: 'text',
+  backgroundClip: 'text',
+  color: 'transparent',
+};
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+const rise: Variants = {
+  hidden: { opacity: 0, y: 22 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: EASE } },
+};
+
+const Label: React.FC<{ children: React.ReactNode; muted?: boolean }> = ({ children, muted }) => (
+  <span
+    className="block text-[9px] font-semibold uppercase tracking-[0.3em]"
+    style={{ color: muted ? 'var(--muted)' : 'var(--gold)' }}
+  >
+    {children}
+  </span>
+);
 
 export const UniversalTechConsole: React.FC = () => {
   const { mode } = useLanguage();
+  const hi = mode === 'hi';
+  const t = (en: string, h: string) => (hi ? h : en);
 
-  // Active state
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTechId, setSelectedTechId] = useState<string>('python');
-  const [isCopied, setIsCopied] = useState(false);
+  const [category, setCategory] = useState('all');
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState('python');
+  const [copied, setCopied] = useState(false);
 
-  // Active selected item lookup
-  const selectedItem = useMemo(() => {
-    return (
-      UNIVERSAL_TECH_REGISTRY.find((item) => item.id === selectedTechId) ||
-      UNIVERSAL_TECH_REGISTRY[0]
-    );
-  }, [selectedTechId]);
+  const selected = useMemo(
+    () => UNIVERSAL_TECH_REGISTRY.find((i) => i.id === selectedId) || UNIVERSAL_TECH_REGISTRY[0],
+    [selectedId]
+  );
 
-  // Filtered tech list
-  const filteredTechList = useMemo(() => {
+  const list = useMemo(() => {
+    const q = query.trim().toLowerCase();
     return UNIVERSAL_TECH_REGISTRY.filter((tech) => {
-      const matchesCategory =
-        selectedCategory === 'all' || tech.category === selectedCategory;
-      const query = searchQuery.trim().toLowerCase();
-      const matchesQuery =
-        !query ||
-        tech.name.toLowerCase().includes(query) ||
-        (tech.nameHi && tech.nameHi.toLowerCase().includes(query)) ||
-        tech.categoryLabel.toLowerCase().includes(query) ||
-        tech.features.some((f) => f.toLowerCase().includes(query)) ||
-        tech.compatibility.platforms.some((p) => p.toLowerCase().includes(query));
-
-      return matchesCategory && matchesQuery;
+      if (category !== 'all' && tech.category !== category) return false;
+      if (!q) return true;
+      return (
+        tech.name.toLowerCase().includes(q) ||
+        tech.nameHi?.toLowerCase().includes(q) ||
+        tech.categoryLabel.toLowerCase().includes(q) ||
+        tech.features.some((f) => f.toLowerCase().includes(q)) ||
+        tech.compatibility.platforms.some((p) => p.toLowerCase().includes(q))
+      );
     });
-  }, [selectedCategory, searchQuery]);
+  }, [category, query]);
 
-  const handleCopyCode = () => {
-    if (selectedItem?.sampleCodeSnippet) {
-      navigator.clipboard.writeText(selectedItem.sampleCodeSnippet);
-      sound.playClick();
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+  const counts = useMemo(() => {
+    const map: Record<string, number> = { all: UNIVERSAL_TECH_REGISTRY.length };
+    UNIVERSAL_TECH_REGISTRY.forEach((i) => (map[i.category] = (map[i.category] || 0) + 1));
+    return map;
+  }, []);
+
+  const handleCopy = async () => {
+    if (!selected.sampleCodeSnippet) return;
+    sound.playClick();
+    try {
+      await navigator.clipboard.writeText(selected.sampleCodeSnippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked */
     }
   };
 
-  const getCategoryIcon = (catId: string) => {
-    switch (catId) {
-      case 'languages':
-        return <Code className="w-3.5 h-3.5" />;
-      case 'frameworks':
-        return <Layers className="w-3.5 h-3.5" />;
-      case 'databases':
-        return <Database className="w-3.5 h-3.5" />;
-      case 'cloud_devops':
-        return <Cloud className="w-3.5 h-3.5" />;
-      case 'ai_ml':
-        return <Cpu className="w-3.5 h-3.5" />;
-      case 'tools':
-        return <Shield className="w-3.5 h-3.5" />;
-      default:
-        return <Sparkles className="w-3.5 h-3.5" />;
-    }
-  };
+  const features = (hi && selected.featuresHi?.length ? selected.featuresHi : selected.features) || [];
+  const name = hi && selected.nameHi ? selected.nameHi : selected.name;
 
   return (
     <section
       id="tech-console"
-      className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden select-none"
+      style={TOKENS}
+      className="relative overflow-hidden px-5 py-24 sm:px-8 sm:py-28 lg:px-10 select-none"
     >
-      {/* Background Atmosphere */}
-      <div className="absolute inset-0 pointer-events-none -z-10">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[550px] bg-[radial-gradient(circle,rgba(254,249,240,0.06)_0%,rgba(212,175,55,0.03)_40%,transparent_70%)] blur-[90px]" />
-      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 left-1/2 h-[420px] w-[800px] -translate-x-1/2 opacity-[0.14] blur-[140px]"
+        style={{ background: 'radial-gradient(circle, var(--gold) 0%, transparent 70%)' }}
+      />
 
-      <div className="max-w-7xl mx-auto w-full space-y-8 relative z-10">
-        {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-400/30 text-amber-300 text-[11px] font-mono tracking-wider backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>UNIVERSAL 3D TECH CONSOLE // PRODUCTION ARCHITECTURE</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-cyber font-black tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.9)]">
-              <MysticTextReveal
-                text={mode === 'hi' ? 'यूनिवर्सल 3D टेक कंसोल' : 'Universal 3D Tech Console'}
-                magicTheme="gold"
-                className="text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-stone-100 to-amber-300"
-              />
+      <div className="relative mx-auto max-w-7xl">
+        {/* ---------- Header ---------- */}
+        <motion.header
+          variants={rise}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-60px' }}
+          className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end"
+        >
+          <div className="max-w-2xl">
+            <Label>{t('Technology', 'तकनीक')}</Label>
+            <h2 className="mt-4 text-4xl font-light leading-[1.05] sm:text-5xl lg:text-6xl" style={{ ...SERIF, ...GOLD_TEXT }}>
+              {t('Tech Console', 'टेक कंसोल')}
             </h2>
-            <p className="text-xs sm:text-sm font-mono text-stone-300 max-w-2xl leading-relaxed">
-              {mode === 'hi'
-                ? 'आधुनिक रिलेशनल SQL, नोएसक्यूएल, AI मॉडल, 3D इंजन और क्लाउड परिनियोजन आर्किटेक्चर।'
-                : 'Curated luxury architectural console exploring live frameworks, databases, platforms, and AI engines.'}
+            <p className="mt-5 text-base leading-relaxed" style={{ color: 'var(--muted)' }}>
+              {t(
+                'Languages, frameworks, databases and AI tools I work with. Pick one to explore.',
+                'भाषाएँ, फ़्रेमवर्क, डेटाबेस और AI टूल जिनके साथ मैं काम करता हूँ। कोई एक चुनकर देखें।'
+              )}
             </p>
           </div>
-
-          {/* Quick Counter */}
-          <div className="flex items-center gap-3 font-mono text-xs text-stone-400">
-            <div className="px-3.5 py-1.5 rounded-xl bg-stone-900/80 border border-stone-800 backdrop-blur-md">
-              <span className="text-amber-300 font-bold mr-1">
-                {UNIVERSAL_TECH_REGISTRY.length}
-              </span>
-              <span>Supported Technologies</span>
-            </div>
+          <div className="text-right">
+            <span className="text-5xl font-light leading-none" style={{ ...SERIF, ...GOLD_TEXT }}>
+              {UNIVERSAL_TECH_REGISTRY.length}
+            </span>
+            <Label muted>{t('Technologies', 'तकनीकें')}</Label>
           </div>
-        </div>
+        </motion.header>
 
-        {/* Master Console Chassis */}
-        <div className="rounded-3xl border border-stone-200/20 bg-gradient-to-b from-[#fbfbfa]/95 via-[#f5f5f3]/95 to-[#edece8]/95 text-stone-900 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5),0_0_40px_rgba(255,255,255,0.08)_inset] backdrop-blur-2xl overflow-hidden">
-          {/* Top Bar of the Luxury Console */}
-          <div className="px-6 py-4 border-b border-stone-300/60 bg-gradient-to-r from-stone-100/90 via-stone-50/90 to-stone-100/90 flex flex-wrap items-center justify-between gap-4">
-            {/* Search Input */}
-            <div className="relative flex-1 min-w-[220px] max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
+        {/* ---------- Console ---------- */}
+        <motion.div
+          variants={rise}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-40px' }}
+          className="overflow-hidden rounded-[28px] border"
+          style={{
+            borderColor: 'var(--line-strong)',
+            background: 'var(--panel)',
+            boxShadow: '0 40px 100px -40px #000, 0 0 80px -40px rgba(212,175,95,0.35)',
+          }}
+        >
+          {/* Search + tabs */}
+          <div className="flex flex-col gap-4 border-b px-5 py-4 sm:px-7" style={{ borderColor: 'var(--line)' }}>
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--gold)' }} strokeWidth={1.5} />
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={
-                  mode === 'hi'
-                    ? 'तकनीक, डेटाबेस या भाषा खोजें...'
-                    : 'Search technology, database, framework...'
-                }
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/90 border border-stone-300 text-stone-900 placeholder:text-stone-400 font-mono text-xs focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 transition shadow-inner"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('Search technology', 'तकनीक खोजें')}
+                className="w-full rounded-full border bg-black/50 py-2.5 pl-11 pr-16 text-sm outline-none transition-colors placeholder:text-[color:var(--muted)] focus:border-[color:var(--gold)]"
+                style={{ borderColor: 'var(--line-strong)', color: 'var(--text)' }}
               />
-              {searchQuery && (
+              {query && (
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-stone-400 hover:text-stone-700"
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-semibold uppercase tracking-[0.2em] cursor-pointer hover:text-[color:var(--gold-soft)]"
+                  style={{ color: 'var(--gold)' }}
                 >
-                  Clear
+                  {t('Clear', 'हटाएँ')}
                 </button>
               )}
             </div>
 
-            {/* Status Indicator */}
-            <div className="flex items-center gap-2 text-xs font-mono text-stone-600">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span className="font-semibold text-stone-800">
-                {selectedItem.name}
-              </span>
-              <span className="text-stone-400">|</span>
-              <span className="text-stone-500 text-[11px]">
-                {selectedItem.compatibility.architecture}
-              </span>
-            </div>
-          </div>
-
-          {/* Category Filter Tabs */}
-          <div className="px-6 py-2.5 bg-stone-100/60 border-b border-stone-300/40 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            {UNIVERSAL_TECH_CATEGORIES.map((cat) => {
-              const isSelected = selectedCategory === cat.id;
-              const count =
-                cat.id === 'all'
-                  ? UNIVERSAL_TECH_REGISTRY.length
-                  : UNIVERSAL_TECH_REGISTRY.filter((t) => t.category === cat.id).length;
-
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    sound.playClick();
-                    setSelectedCategory(cat.id);
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap ${
-                    isSelected
-                      ? 'bg-white text-stone-950 font-bold shadow-sm border border-stone-300/90 ring-1 ring-amber-500/20'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-                  }`}
-                >
-                  {getCategoryIcon(cat.id)}
-                  <span>{mode === 'hi' ? cat.labelHi : cat.labelEn}</span>
-                  <span
-                    className={`ml-1 text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isSelected
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-stone-200/70 text-stone-600'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Main Stage: Left 3D Circular Lens + Right Deep Detail Panel */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-stone-300/60">
-            {/* Left Column: Large Central 3D Circular Optical Lens */}
-            <div className="lg:col-span-5 p-6 sm:p-8 flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-b from-stone-50/70 to-stone-100/70">
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-                <div className="w-[320px] h-[320px] rounded-full border border-stone-300/60" />
-                <div className="absolute w-[380px] h-[380px] rounded-full border border-dashed border-stone-300/40" />
-              </div>
-
-              {/* Central 3D Lens Container */}
-              <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center my-4 group">
-                <div className="absolute inset-0 z-0">
-                  <Lens3DViewer
-                    brandColor={selectedItem.svgBrandColor}
-                    accentGlow={selectedItem.accentGlow}
-                    isInteractive={true}
-                  />
-                </div>
-
-                <motion.div
-                  key={selectedItem.id}
-                  initial={{ scale: 0.75, opacity: 0, rotate: -10 }}
-                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                  transition={{ type: 'spring', damping: 18, stiffness: 200 }}
-                  className="relative z-10 w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center drop-shadow-[0_12px_24px_rgba(0,0,0,0.18)]"
-                >
-                  <PremiumBrandLogo
-                    iconName={selectedItem.iconName}
-                    className="w-full h-full object-contain"
-                    brandColor={selectedItem.svgBrandColor}
-                  />
-                </motion.div>
-
-                {selectedItem.badge && (
-                  <div className="absolute -bottom-2 z-20 px-3 py-1 rounded-full bg-gradient-to-r from-amber-600 to-amber-700 text-white font-mono text-[10px] font-bold tracking-wider shadow-md uppercase">
-                    {selectedItem.badge}
-                  </div>
-                )}
-              </div>
-
-              {/* Central Lens Caption */}
-              <div className="text-center mt-3 space-y-1 relative z-10">
-                <h3 className="font-cyber font-black text-2xl text-stone-900 tracking-tight">
-                  {mode === 'hi' && selectedItem.nameHi
-                    ? selectedItem.nameHi
-                    : selectedItem.name}
-                </h3>
-                <p className="text-xs font-mono font-medium text-stone-500">
-                  {mode === 'hi'
-                    ? selectedItem.categoryLabelHi
-                    : selectedItem.categoryLabel}{' '}
-                  • {selectedItem.versionOrLevel}
-                </p>
-              </div>
-
-              {/* Proficiency Gauge Bar */}
-              <div className="w-full max-w-xs mt-5 space-y-1.5 relative z-10">
-                <div className="flex items-center justify-between text-[11px] font-mono text-stone-600">
-                  <span>Proficiency & Readiness</span>
-                  <span className="font-bold text-stone-900">
-                    {selectedItem.proficiency}%
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-stone-300/80 overflow-hidden p-0.5">
-                  <motion.div
-                    key={`gauge-${selectedItem.id}`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${selectedItem.proficiency}%` }}
-                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                    className="h-full rounded-full bg-gradient-to-r from-stone-800 via-amber-700 to-amber-600"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Spec Sheet */}
-            <div className="lg:col-span-7 p-6 sm:p-8 space-y-6 bg-white/70">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono uppercase tracking-wider text-amber-700 font-bold">
-                    SPECIFICATION DOSSIER
-                  </span>
-                </div>
-                <p className="text-sm sm:text-base font-sans text-stone-700 leading-relaxed">
-                  {mode === 'hi'
-                    ? selectedItem.shortSummaryHi
-                    : selectedItem.shortSummary}
-                </p>
-              </div>
-
-              {/* Compatibility Matrix Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-1">
-                  <span className="text-[10px] font-mono text-stone-400 block uppercase font-medium">
-                    PLATFORM COMPATIBILITY
-                  </span>
-                  <span className="font-mono text-xs font-bold text-stone-800 block">
-                    {selectedItem.compatibility.platforms.join(', ')}
-                  </span>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-1">
-                  <span className="text-[10px] font-mono text-stone-400 block uppercase font-medium">
-                    TIER &amp; ARCHITECTURE
-                  </span>
-                  <span className="font-mono text-xs font-bold text-stone-800 block truncate">
-                    {selectedItem.compatibility.architecture}
-                  </span>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-1">
-                  <span className="text-[10px] font-mono text-stone-400 block uppercase font-medium">
-                    CORE RUNTIME
-                  </span>
-                  <span className="font-mono text-xs font-bold text-stone-800 block truncate">
-                    {selectedItem.compatibility.runtime}
-                  </span>
-                </div>
-              </div>
-
-              {/* Core Features Pillars */}
-              <div className="space-y-2.5">
-                <span className="text-xs font-mono font-bold text-stone-800 block uppercase tracking-wide">
-                  {mode === 'hi' ? 'प्रमुख विशेषताएं' : 'Engineered Architectural Features'}
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {(mode === 'hi' ? selectedItem.featuresHi : selectedItem.features).map(
-                    (feat, fIdx) => (
-                      <div
-                        key={fIdx}
-                        className="flex items-start gap-2 p-2.5 rounded-xl bg-stone-100/70 border border-stone-200/60 text-xs font-sans text-stone-700"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <span>{feat}</span>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {/* Live Code Snippet */}
-              {selectedItem.sampleCodeSnippet && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-stone-500 flex items-center gap-1.5">
-                      <Terminal className="w-3.5 h-3.5 text-stone-700" />
-                      <span>{mode === 'hi' ? 'कोड नमूना' : 'Verified Code Implementation'}</span>
-                    </span>
-                    <button
-                      onClick={handleCopyCode}
-                      className="inline-flex items-center gap-1 text-[11px] font-mono text-stone-600 hover:text-stone-900 transition cursor-pointer"
-                    >
-                      {isCopied ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-700 font-semibold">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Copy Snippet</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-stone-900 text-stone-100 font-mono text-xs overflow-x-auto shadow-inner border border-stone-800">
-                    <pre className="leading-relaxed whitespace-pre font-mono text-[11px] text-amber-200/90">
-                      <code>{selectedItem.sampleCodeSnippet}</code>
-                    </pre>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="pt-2 flex flex-wrap items-center gap-3">
-                {selectedItem.documentationUrl && (
-                  <a
-                    href={selectedItem.documentationUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => sound.playClick()}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-mono text-xs font-bold transition shadow-sm cursor-pointer"
-                  >
-                    <span>{mode === 'hi' ? 'दस्तावेज़ देखें' : 'Official Documentation'}</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
-                <button
-                  onClick={() => {
-                    sound.playClick();
-                    const el = document.getElementById('projects');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-mono text-xs font-semibold border border-stone-300 transition cursor-pointer"
-                >
-                  <span>{mode === 'hi' ? 'प्रोजेक्ट्स में उपयोग देखें' : 'View In Active Projects'}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-stone-500" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Horizontal Technology Carousel */}
-          <div className="p-6 bg-stone-100/90 border-t border-stone-300/60 space-y-3">
-            <div className="flex items-center justify-between text-xs font-mono text-stone-600">
-              <span className="uppercase tracking-wider font-semibold">
-                {mode === 'hi' ? 'सभी तकनीक कैटलॉग' : 'Universal Technology Catalogue'} ({filteredTechList.length})
-              </span>
-              <span className="text-[11px] text-stone-500 hidden sm:inline">
-                Click any brand to project into 3D lens
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
-              {filteredTechList.map((item) => {
-                const isSelected = item.id === selectedTechId;
+            <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1">
+              {UNIVERSAL_TECH_CATEGORIES.map((cat) => {
+                const active = category === cat.id;
                 return (
                   <button
-                    key={item.id}
+                    key={cat.id}
+                    type="button"
                     onClick={() => {
                       sound.playClick();
-                      setSelectedTechId(item.id);
+                      setCategory(cat.id);
                     }}
-                    className={`shrink-0 flex items-center gap-3 p-2.5 pr-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
-                      isSelected
-                        ? 'bg-white border-amber-600 shadow-md ring-2 ring-amber-500/30 scale-[1.03]'
-                        : 'bg-white/70 hover:bg-white border-stone-300/80 hover:border-stone-400 shadow-sm'
-                    }`}
+                    className="whitespace-nowrap rounded-full px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all cursor-pointer"
+                    style={
+                      active
+                        ? { background: 'linear-gradient(120deg, var(--gold-soft), var(--gold))', color: '#14100A' }
+                        : { color: 'var(--muted)' }
+                    }
                   >
-                    <div className="w-9 h-9 rounded-xl bg-stone-50 border border-stone-200 p-1 flex items-center justify-center shrink-0">
-                      <PremiumBrandLogo
-                        iconName={item.iconName}
-                        className="w-full h-full object-contain"
-                        brandColor={item.svgBrandColor}
-                      />
-                    </div>
-                    <div className="text-left">
-                      <span className="font-cyber font-bold text-xs text-stone-900 block whitespace-nowrap">
-                        {mode === 'hi' && item.nameHi ? item.nameHi : item.name}
-                      </span>
-                      <span className="text-[10px] font-mono text-stone-500 block">
-                        {item.categoryLabel}
-                      </span>
-                    </div>
+                    {hi ? cat.labelHi : cat.labelEn}
+                    <span className="ml-2 opacity-60">{counts[cat.id] ?? 0}</span>
                   </button>
                 );
               })}
             </div>
           </div>
-        </div>
+
+          {/* Stage */}
+          <div className="grid grid-cols-1 lg:grid-cols-12">
+            {/* Lens */}
+            <div
+              className="relative flex flex-col items-center justify-center overflow-hidden border-b p-8 lg:col-span-5 lg:border-b-0 lg:border-r"
+              style={{ borderColor: 'var(--line)', background: 'radial-gradient(ellipse at 50% 35%, #1a150c 0%, #0a0907 75%)' }}
+            >
+              <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className="h-[320px] w-[320px] rounded-full border" style={{ borderColor: 'var(--line)' }} />
+                <div className="absolute h-[390px] w-[390px] rounded-full border border-dashed opacity-60" style={{ borderColor: 'var(--line)' }} />
+              </div>
+
+              <div className="relative my-4 flex h-64 w-64 items-center justify-center sm:h-72 sm:w-72">
+                <div className="absolute inset-0 z-0">
+                  <Lens3DViewer brandColor={selected.svgBrandColor} accentGlow={selected.accentGlow} isInteractive />
+                </div>
+                <motion.div
+                  key={selected.id}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.6, ease: EASE }}
+                  className="relative z-10 flex h-28 w-28 items-center justify-center drop-shadow-[0_14px_30px_rgba(0,0,0,0.6)] sm:h-32 sm:w-32"
+                >
+                  <PremiumBrandLogo
+                    iconName={selected.iconName}
+                    className="h-full w-full object-contain"
+                    brandColor={selected.svgBrandColor}
+                  />
+                </motion.div>
+                {selected.badge && (
+                  <span
+                    className="absolute -bottom-1 z-20 rounded-full px-3.5 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-[#14100A]"
+                    style={{ background: 'linear-gradient(120deg, var(--gold-soft), var(--gold))' }}
+                  >
+                    {selected.badge}
+                  </span>
+                )}
+              </div>
+
+              <div className="relative z-10 mt-4 text-center">
+                <h3 className="text-4xl font-light" style={{ ...SERIF, color: 'var(--text)' }}>
+                  {name}
+                </h3>
+                <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.28em]" style={{ color: 'var(--gold)' }}>
+                  {hi ? selected.categoryLabelHi || selected.categoryLabel : selected.categoryLabel}
+                  {selected.versionOrLevel ? `  ·  ${selected.versionOrLevel}` : ''}
+                </p>
+              </div>
+
+              <div className="relative z-10 mt-7 w-full max-w-xs">
+                <div className="flex items-baseline justify-between">
+                  <Label muted>{t('Proficiency', 'दक्षता')}</Label>
+                  <span className="text-2xl font-light leading-none" style={{ ...SERIF, ...GOLD_TEXT }}>
+                    {selected.proficiency}%
+                  </span>
+                </div>
+                <div className="mt-2.5 h-[3px] w-full overflow-hidden rounded-full" style={{ background: 'var(--line)' }}>
+                  <motion.div
+                    key={`gauge-${selected.id}`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${selected.proficiency}%` }}
+                    transition={{ duration: 0.9, ease: EASE }}
+                    className="h-full rounded-full"
+                    style={{
+                      background: 'linear-gradient(90deg, var(--gold-deep), var(--gold-soft))',
+                      boxShadow: '0 0 12px rgba(212,175,95,0.6)',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="space-y-7 p-6 sm:p-9 lg:col-span-7" style={{ background: 'var(--panel-2)' }}>
+              <div>
+                <Label>{t('Overview', 'परिचय')}</Label>
+                <p className="mt-3 text-[15px] leading-[1.75]" style={{ color: 'var(--muted)' }}>
+                  {hi && selected.shortSummaryHi ? selected.shortSummaryHi : selected.shortSummary}
+                </p>
+              </div>
+
+              <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border sm:grid-cols-3" style={{ borderColor: 'var(--line)', background: 'var(--line)' }}>
+                {[
+                  [t('Platforms', 'प्लेटफ़ॉर्म'), selected.compatibility.platforms.join(', ')],
+                  [t('Architecture', 'आर्किटेक्चर'), selected.compatibility.architecture],
+                  [t('Runtime', 'रनटाइम'), selected.compatibility.runtime],
+                ].map(([k, v]) => (
+                  <div key={k} className="p-4" style={{ background: 'var(--panel-2)' }}>
+                    <dt><Label muted>{k}</Label></dt>
+                    <dd className="mt-1.5 text-sm" style={{ color: 'var(--text)' }}>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              {features.length > 0 && (
+                <div>
+                  <Label>{t('Key features', 'मुख्य विशेषताएँ')}</Label>
+                  <ul className="mt-3 grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+                    {features.map((f, i) => (
+                      <li key={i} className="flex items-baseline gap-3.5 border-b py-3 text-sm" style={{ borderColor: 'var(--line)', color: 'var(--text)' }}>
+                        <span className="text-base font-light leading-none" style={{ ...SERIF, ...GOLD_TEXT }}>
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {selected.sampleCodeSnippet && (
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label>{t('Code sample', 'कोड नमूना')}</Label>
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.22em] transition-colors cursor-pointer hover:text-[color:var(--gold-soft)]"
+                      style={{ color: copied ? 'var(--gold-soft)' : 'var(--muted)' }}
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                      {copied ? t('Copied', 'कॉपी हुआ') : t('Copy', 'कॉपी')}
+                    </button>
+                  </div>
+                  <pre
+                    className="mt-3 select-text overflow-x-auto rounded-2xl border bg-black/60 p-4 font-mono text-[11px] leading-relaxed"
+                    style={{ borderColor: 'var(--line)', color: 'var(--gold-soft)' }}
+                  >
+                    <code>{selected.sampleCodeSnippet}</code>
+                  </pre>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                {selected.documentationUrl && (
+                  <a
+                    href={selected.documentationUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => sound.playClick()}
+                    className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#14100A] transition-all hover:brightness-110 active:scale-95 shadow-[0_8px_28px_rgba(212,175,95,0.28)]"
+                    style={{ background: 'linear-gradient(120deg, var(--gold-soft), var(--gold))' }}
+                  >
+                    {t('Documentation', 'दस्तावेज़')}
+                    <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playClick();
+                    document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] transition-colors cursor-pointer hover:text-[color:var(--gold-soft)] active:scale-95"
+                  style={{ borderColor: 'var(--line-strong)', color: 'var(--text)' }}
+                >
+                  {t('See in projects', 'प्रोजेक्ट में देखें')}
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.6} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Catalogue */}
+          <div className="border-t px-5 py-5 sm:px-7" style={{ borderColor: 'var(--line)', background: '#0A0908' }}>
+            <div className="mb-3 flex items-center justify-between">
+              <Label muted>
+                {t('All technologies', 'सभी तकनीकें')} · {list.length}
+              </Label>
+              <span className="hidden text-[9px] uppercase tracking-[0.22em] sm:inline" style={{ color: 'var(--muted)' }}>
+                {t('Tap one to view', 'देखने के लिए चुनें')}
+              </span>
+            </div>
+
+            {list.length === 0 ? (
+              <p className="py-6 text-center text-sm" style={{ color: 'var(--muted)' }}>
+                {t('Nothing found. Try another word.', 'कुछ नहीं मिला। कोई और शब्द आज़माएँ।')}
+              </p>
+            ) : (
+              <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1 scroll-smooth">
+                {list.map((item) => {
+                  const active = item.id === selectedId;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        sound.playClick();
+                        setSelectedId(item.id);
+                      }}
+                      className="flex shrink-0 items-center gap-3 rounded-2xl border py-2.5 pl-2.5 pr-5 transition-all duration-300 cursor-pointer hover:border-[color:var(--line-strong)]"
+                      style={{
+                        borderColor: active ? 'var(--gold)' : 'var(--line)',
+                        background: active ? 'rgba(212,175,95,0.08)' : 'var(--panel)',
+                        boxShadow: active ? '0 0 30px -10px rgba(212,175,95,0.5)' : 'none',
+                      }}
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-black/50 p-1.5" style={{ borderColor: 'var(--line)' }}>
+                        <PremiumBrandLogo iconName={item.iconName} className="h-full w-full object-contain" brandColor={item.svgBrandColor} />
+                      </span>
+                      <span className="text-left">
+                        <span className="block whitespace-nowrap text-sm" style={{ color: active ? 'var(--gold-soft)' : 'var(--text)' }}>
+                          {hi && item.nameHi ? item.nameHi : item.name}
+                        </span>
+                        <span className="block text-[9px] uppercase tracking-[0.2em]" style={{ color: 'var(--muted)' }}>
+                          {item.categoryLabel}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </motion.div>
       </div>
     </section>
   );

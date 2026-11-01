@@ -39,9 +39,11 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
-  UploadCloud
+  UploadCloud,
+  Crown
 } from 'lucide-react';
 
+import { AdminRoyalIdentityManager } from './AdminRoyalIdentityManager';
 import { AdminSkillsManager } from './AdminSkillsManager';
 import { AdminProjectManager } from './AdminProjectManager';
 import { AdminJourneyManager } from './AdminJourneyManager';
@@ -66,6 +68,7 @@ type AdminTab =
   | 'skills'
   | 'projects'
   | 'journey'
+  | 'royal_identity'
   | 'images'
   | 'cloudinary_upload'
   | 'friends'
@@ -235,6 +238,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     { id: 'skills', label: 'Skills Stack', icon: Layers },
     { id: 'projects', label: 'Projects', icon: Code2 },
     { id: 'journey', label: 'Milestones', icon: MapPin },
+    { id: 'royal_identity', label: 'Hero 3D Poses (PNG)', icon: Sparkles },
     { id: 'cloudinary_upload', label: 'Cloudinary CDN', icon: UploadCloud },
     { id: 'images', label: 'Media & 3D Orbit', icon: ImageIcon },
     { id: 'friends', label: 'Friends Universe', icon: Users },
@@ -450,6 +454,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
               {activeTab === 'skills' && <AdminSkillsManager />}
               {activeTab === 'projects' && <AdminProjectManager />}
               {activeTab === 'journey' && <AdminJourneyManager />}
+              {activeTab === 'royal_identity' && <AdminRoyalIdentityManager />}
               {activeTab === 'cloudinary_upload' && <AdminCloudinaryUpload />}
               {activeTab === 'images' && <AdminImagesManager />}
               {activeTab === 'friends' && <AdminFriendsManager />}

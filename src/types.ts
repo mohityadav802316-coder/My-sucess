@@ -304,4 +304,26 @@ export interface SiteSettings {
     vision: boolean;
     contact: boolean;
   };
+  royalIdentity?: RoyalIdentityConfig;
+}
+
+export interface RoyalIdentityImage {
+  id: string;
+  url: string;
+  title?: string;
+  titleHi?: string;
+  displayOrder: number;
+  isEnabled: boolean;
+  isMainActive?: boolean;
+  aspectRatio?: number;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface RoyalIdentityConfig {
+  activeImageId?: string;
+  autoRotate?: boolean;
+  rotateInterval?: number; // in seconds
+  enableWheelTransition?: boolean;
+  images: RoyalIdentityImage[];
 }

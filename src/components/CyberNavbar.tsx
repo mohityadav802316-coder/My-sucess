@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { sound } from './audio/SoundEffects';
+
 import {
   Languages,
   Shield,
   Menu,
   X,
   Zap,
-  Sparkles,
   Lock,
-  Heart,
-  Users
+  Users,
+  ChevronRight,
+  Home,
 } from 'lucide-react';
 
 interface CyberNavbarProps {
@@ -27,29 +29,21 @@ export const CyberNavbar: React.FC<CyberNavbarProps> = ({
   onOpenFriends,
 }) => {
   const { mode, setMode } = useLanguage();
+
+  // Safely read saved performance preference
   const [isLowEffects, setIsLowEffects] = useState(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return false;
+
+    try {
       return localStorage.getItem('mohit_low_effects') === 'true';
+    } catch {
+      return false;
     }
-    return false;
   });
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const toggleLanguage = () => {
-    sound.playClick();
-    setMode(mode === 'hi' ? 'en' : 'hi');
-  };
-
-  const toggleLowEffects = () => {
-    sound.playClick();
-    const next = !isLowEffects;
-    setIsLowEffects(next);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mohit_low_effects', String(next));
-      window.dispatchEvent(new CustomEvent('mohit_toggle_low_effects', { detail: { lowEffects: next } }));
-    }
-  };
-
+  // Navigation links
   const navLinks = [
     { href: '#about', labelEn: 'About', labelHi: 'परिचय' },
     { href: '#tech-console', labelEn: '3D Console', labelHi: '3D कंसोल' },
@@ -61,178 +55,360 @@ export const CyberNavbar: React.FC<CyberNavbarProps> = ({
     { href: '#contact', labelEn: 'Contact', labelHi: 'संपर्क' },
   ];
 
+  // Sound helper
+  const playClick = () => {
+    sound.playClick();
+  };
+
+  // Language switcher
+  const toggleLanguage = () => {
+    playClick();
+    setMode(mode === 'hi' ? 'en' : 'hi');
+  };
+
+  // Performance / Low Effects switcher
+  const toggleLowEffects = () => {
+    playClick();
+
+    const next = !isLowEffects;
+    setIsLowEffects(next);
+
+    try {
+      localStorage.setItem('mohit_low_effects', String(next));
+    } catch {
+      // Continue even if browser storage is unavailable
+    }
+
+    window.dispatchEvent(
+      new CustomEvent('mohit_toggle_low_effects', {
+        detail: { lowEffects: next },
+      })
+    );
+  };
+
+  // Open Friends
+  const handleOpenFriends = () => {
+    playClick();
+    setMobileMenuOpen(false);
+    onOpenFriends?.();
+  };
+
+  // Open Family Vault
+  const handleOpenFamilyVault = () => {
+    playClick();
+    setMobileMenuOpen(false);
+    onOpenFamilyVault?.();
+  };
+
+  // Open Admin
+  const handleOpenAdmin = () => {
+    playClick();
+    setMobileMenuOpen(false);
+    onOpenAdmin();
+  };
+
+  // Mobile menu toggle
+  const toggleMobileMenu = () => {
+    playClick();
+    setMobileMenuOpen((prev) => !prev);
+  };
+
+  // Close mobile menu
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
+
+  const isHindi = mode === 'hi';
+
+  // Reusable luxury button styling
+  const actionButton =
+    'inline-flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-medium transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 cursor-pointer whitespace-nowrap';
+
+  const goldButton =
+    'border-amber-500/30 bg-[#11100c] text-amber-300 hover:border-amber-400/70 hover:bg-amber-500/10 hover:text-amber-200';
+
+  const silverButton =
+    'border-slate-500/30 bg-[#101010] text-slate-300 hover:border-slate-300/60 hover:bg-white/5 hover:text-white';
+
   return (
-    <header className="sticky top-0 z-50 w-full bg-slate-950/80 backdrop-blur-xl border-b border-amber-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 sm:gap-6">
-        {/* Zone 1: Brand Wordmark */}
+    <header className="sticky top-0 z-50 w-full bg-[#050505]/95 backdrop-blur-2xl border-b border-amber-500/20 shadow-[0_5px_25px_rgba(0,0,0,0.65)]">
+
+      {/* Main Navbar */}
+      <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 h-[66px] flex items-center justify-between gap-2 sm:gap-4">
+
+        {/* Zone 1: Premium Brand Logo */}
         <a
           href="#"
-          onClick={() => sound.playClick()}
-          className="flex items-center gap-2.5 shrink-0 focus:outline-none group"
+          onClick={playClick}
+          aria-label="Mohit Yadav - Home"
+          className="group flex items-center gap-2.5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-lg"
         >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 via-rose-500 to-amber-600 p-0.5 shadow-md shadow-amber-500/20 group-hover:shadow-amber-500/40 transition">
-            <div className="w-full h-full bg-slate-950 rounded-[6px] flex items-center justify-center font-cyber font-black text-amber-400 text-xs">
-              MY
+          {/* Logo */}
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#f5d77a] via-[#c49a36] to-[#80601d] p-[1px] shadow-[0_0_15px_rgba(212,175,55,0.15)] group-hover:shadow-[0_0_22px_rgba(212,175,55,0.35)] transition-all duration-300">
+            <div className="w-full h-full rounded-[10px] bg-[#080808] flex items-center justify-center">
+              <span className="text-[#e5c46b] font-black text-sm tracking-tight">
+                MY
+              </span>
             </div>
           </div>
-          <span className="font-cyber font-bold text-white text-base tracking-wider group-hover:text-amber-300 transition whitespace-nowrap drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]">
-            MOHIT YADAV
-          </span>
+
+          {/* Brand Name */}
+          <div className="flex flex-col leading-tight">
+            <span className="font-bold text-white text-[13px] sm:text-[15px] tracking-[1.5px] whitespace-nowrap group-hover:text-amber-200 transition-colors">
+              MOHIT YADAV
+            </span>
+            <span className="hidden sm:block text-[8px] tracking-[3px] text-[#b7a16a] font-medium mt-1">
+              DIGITAL IDENTITY
+            </span>
+          </div>
         </a>
 
-        {/* Zone 2: Nav Links */}
+        {/* Zone 2: Desktop Navigation */}
         {!isAdminView && (
-          <nav className="hidden lg:flex items-center space-x-1 shrink-0" aria-label="Main Navigation">
+          <nav
+            className="hidden xl:flex items-center justify-center gap-0.5 flex-1"
+            aria-label="Main Navigation"
+          >
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={() => sound.playHover()}
-                className="px-3 py-1.5 text-xs font-mono text-slate-300 hover:text-amber-300 transition whitespace-nowrap"
+                className="relative px-2.5 py-2 text-[11px] font-medium tracking-wide text-slate-300 hover:text-[#e7c66e] transition-colors duration-200 whitespace-nowrap group"
               >
-                {mode === 'hi' ? link.labelHi : link.labelEn}
+                {isHindi ? link.labelHi : link.labelEn}
+
+                <span className="absolute bottom-0 left-2.5 right-2.5 h-[1px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
               </a>
             ))}
           </nav>
         )}
 
-        {/* Zone 3: Primary Actions (Friends, Family Vault, Low Effects, Language, Audio, Admin) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Zone 3: Action Buttons */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
 
-          {/* Friends Universe Button */}
+          {/* Friends Button */}
           {onOpenFriends && !isAdminView && (
             <button
-              onClick={() => {
-                sound.playClick();
-                onOpenFriends();
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 text-cyan-300 border border-cyan-500/40 hover:border-cyan-300 rounded-lg text-xs font-mono transition cursor-pointer whitespace-nowrap shadow-sm shadow-cyan-500/10 active:scale-95"
-              title="Friends Universe 3D"
+              type="button"
+              onClick={handleOpenFriends}
+              className={`${actionButton} ${goldButton}`}
+              title="Friends Universe"
+              aria-label="Open Friends Universe"
             >
-              <Users className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline font-bold">
-                {mode === 'hi' ? 'दोस्त' : 'Friends'}
+              <Users className="w-4 h-4 text-[#d4af37]" />
+              <span className="hidden sm:inline">
+                {isHindi ? 'दोस्त' : 'Friends'}
               </span>
             </button>
           )}
 
-          {/* Locked Folder (Family Vault) Button */}
+          {/* Family Vault Button */}
           {onOpenFamilyVault && !isAdminView && (
             <button
-              onClick={() => {
-                sound.playClick();
-                onOpenFamilyVault();
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-rose-500/20 to-amber-500/20 hover:from-rose-500/30 hover:to-amber-500/30 text-rose-300 border border-rose-500/40 hover:border-rose-300 rounded-lg text-xs font-mono transition cursor-pointer whitespace-nowrap shadow-sm shadow-rose-500/10 active:scale-95"
-              title="Locked Folder - Family Vault"
+              type="button"
+              onClick={handleOpenFamilyVault}
+              className={`${actionButton} ${silverButton}`}
+              title="Family Vault"
+              aria-label="Open Family Vault"
             >
-              <Lock className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden sm:inline font-bold">
-                {mode === 'hi' ? 'परिवार' : 'Vault'}
+              <Lock className="w-4 h-4 text-[#d4af37]" />
+              <span className="hidden sm:inline">
+                {isHindi ? 'परिवार' : 'Vault'}
               </span>
             </button>
           )}
 
-          {/* Low Effects / 100fps Battery Saver Toggle */}
+          {/* Low Effects Toggle */}
           <button
+            type="button"
             onClick={toggleLowEffects}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-mono border transition cursor-pointer active:scale-95 ${
+            className={`${actionButton} ${
               isLowEffects
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-sm shadow-emerald-500/20'
-                : 'bg-slate-900/90 text-slate-400 hover:text-amber-300 border-slate-800'
+                ? 'border-amber-400/60 bg-amber-500/10 text-amber-300'
+                : silverButton
             }`}
             title={
               isLowEffects
-                ? 'Low Effects: Active (Fastest 100fps Mode)'
-                : 'Enable Low Effects (Battery Saver / Fast 100fps)'
+                ? 'Low Effects Active - Performance Mode'
+                : 'Enable Low Effects - Battery Saver'
             }
+            aria-label="Toggle Low Effects"
+            aria-pressed={isLowEffects}
           >
-            <Zap className={`w-3.5 h-3.5 ${isLowEffects ? 'text-emerald-400 fill-emerald-400' : 'text-slate-400'}`} />
+            <Zap
+              className={`w-4 h-4 ${
+                isLowEffects ? 'text-amber-300' : 'text-slate-400'
+              }`}
+              fill={isLowEffects ? 'currentColor' : 'none'}
+            />
             <span className="hidden md:inline text-[10px]">
-              {isLowEffects ? '100fps' : 'FX'}
+              {isLowEffects ? 'ON' : 'FX'}
             </span>
           </button>
 
-          {/* EN/HI Language Switcher */}
+          {/* Language Switcher */}
           <button
+            type="button"
             onClick={toggleLanguage}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-400 rounded-lg text-xs font-mono transition cursor-pointer whitespace-nowrap shadow-sm shadow-amber-500/10 active:scale-95"
-            title={mode === 'hi' ? 'Switch to English' : 'हिंदी में बदलें'}
+            className={`${actionButton} ${goldButton}`}
+            title={isHindi ? 'Switch to English' : 'हिंदी में बदलें'}
+            aria-label="Change language"
           >
-            <Languages className="w-3.5 h-3.5 text-amber-400" />
-            <span className="font-semibold uppercase text-[11px]">
-              {mode === 'hi' ? 'हिंदी' : 'ENG'}
+            <Languages className="w-4 h-4" />
+            <span className="font-semibold uppercase text-[10px]">
+              {isHindi ? 'HI' : 'EN'}
             </span>
           </button>
 
-          {/* Admin Panel Entry */}
+          {/* Admin Button */}
           <button
-            onClick={() => {
-              sound.playClick();
-              onOpenAdmin();
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium rounded-lg border transition cursor-pointer whitespace-nowrap ${
+            type="button"
+            onClick={handleOpenAdmin}
+            className={`inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-semibold border transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 cursor-pointer whitespace-nowrap ${
               isAdminView
-                ? 'bg-amber-500/20 text-amber-300 border-amber-400 shadow-sm shadow-amber-500/30'
-                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-amber-300 border-slate-800 hover:border-amber-500/30'
+                ? 'bg-gradient-to-r from-[#c49a36]/20 to-[#80601d]/10 text-[#f0d68b] border-[#d4af37]/60 shadow-[0_0_12px_rgba(212,175,55,0.12)]'
+                : 'bg-[#15130e] text-[#d4af37] border-[#d4af37]/40 hover:border-[#e8ca72] hover:bg-[#d4af37]/10'
             }`}
+            aria-label={isAdminView ? 'Return to Website' : 'Open Admin Panel'}
           >
-            <Shield className="w-3.5 h-3.5 text-amber-400" />
+            <Shield className="w-4 h-4 text-[#d4af37]" />
+
             <span className="hidden sm:inline">
-              {isAdminView ? (mode === 'hi' ? 'साइट पर लौटें' : 'Return to Site') : (mode === 'hi' ? 'प्रशासक' : 'Admin')}
+              {isAdminView
+                ? isHindi
+                  ? 'साइट पर लौटें'
+                  : 'Return to Site'
+                : isHindi
+                  ? 'प्रशासक'
+                  : 'Admin'}
             </span>
-            <span className="sm:hidden">Admin</span>
+
+            <span className="sm:hidden text-[10px]">
+              Admin
+            </span>
           </button>
 
+          {/* Mobile Menu Toggle */}
           {!isAdminView && (
             <button
-              onClick={() => {
-                sound.playClick();
-                setMobileMenuOpen(!mobileMenuOpen);
-              }}
-              className="lg:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 rounded-lg cursor-pointer"
-              aria-label="Toggle mobile menu"
+              type="button"
+              onClick={toggleMobileMenu}
+              className="xl:hidden w-9 h-9 flex items-center justify-center rounded-lg border border-amber-500/30 bg-[#11100c] text-[#d4af37] hover:bg-amber-500/10 hover:border-amber-400 transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 cursor-pointer"
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileMenuOpen}
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </button>
           )}
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && !isAdminView && (
-        <div className="lg:hidden bg-slate-950/95 border-b border-amber-500/20 px-4 pt-3 pb-5 space-y-2 backdrop-blur-2xl">
-          <div className="grid grid-cols-2 gap-2">
-            {onOpenFriends && (
-              <button
-                onClick={() => {
-                  sound.playClick();
-                  setMobileMenuOpen(false);
-                  onOpenFriends();
-                }}
-                className="col-span-2 px-3 py-2 text-xs font-mono text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/40 rounded-md border border-cyan-500/40 flex items-center justify-between"
-              >
-                <span className="flex items-center gap-2 font-bold">
-                  <Users className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{mode === 'hi' ? 'Friends Universe (दोस्त)' : 'Friends Universe 3D'}</span>
-                </span>
-                <span className="text-[10px] text-cyan-400">⚡</span>
-              </button>
+        <div className="xl:hidden border-t border-[#d4af37]/20 bg-[#070707]/[0.98] backdrop-blur-2xl shadow-[0_15px_30px_rgba(0,0,0,0.5)]">
+
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-4">
+
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[10px] tracking-[3px] text-[#c5a75b] uppercase font-semibold">
+                  Navigation
+                </p>
+                <p className="text-sm text-slate-300 mt-1">
+                  {isHindi ? 'आपका डिजिटल स्पेस' : 'Explore Digital Space'}
+                </p>
+              </div>
+
+              <span className="text-[9px] text-slate-500 font-mono tracking-wider">
+                MOHIT OS
+              </span>
+            </div>
+
+            {/* Friends and Family Actions */}
+            {(onOpenFriends || onOpenFamilyVault) && (
+              <div className="grid grid-cols-2 gap-2 mb-4">
+
+                {onOpenFriends && (
+                  <button
+                    type="button"
+                    onClick={handleOpenFriends}
+                    className="flex items-center justify-between gap-2 px-3 py-3 rounded-xl border border-[#d4af37]/35 bg-gradient-to-br from-[#d4af37]/10 to-transparent text-[#e8ca72] hover:bg-[#d4af37]/15 transition-all active:scale-[0.98]"
+                  >
+                    <span className="flex items-center gap-2 text-xs font-semibold">
+                      <Users className="w-4 h-4" />
+                      {isHindi ? 'दोस्त' : 'Friends'}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-[#a58b4b]" />
+                  </button>
+                )}
+
+                {onOpenFamilyVault && (
+                  <button
+                    type="button"
+                    onClick={handleOpenFamilyVault}
+                    className="flex items-center justify-between gap-2 px-3 py-3 rounded-xl border border-slate-500/30 bg-gradient-to-br from-white/5 to-transparent text-slate-300 hover:border-[#d4af37]/40 hover:text-[#e8ca72] transition-all active:scale-[0.98]"
+                  >
+                    <span className="flex items-center gap-2 text-xs font-semibold">
+                      <Lock className="w-4 h-4 text-[#d4af37]" />
+                      {isHindi ? 'परिवार' : 'Family Vault'}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  </button>
+                )}
+              </div>
             )}
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => {
-                  sound.playClick();
-                  setMobileMenuOpen(false);
-                }}
-                className="px-3 py-2 text-xs font-mono text-slate-300 hover:text-amber-300 hover:bg-slate-900 rounded-md border border-slate-800 flex items-center justify-between"
+
+            {/* Navigation Links */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {navLinks.map((link, index) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => {
+                    playClick();
+                    closeMobileMenu();
+                  }}
+                  className="group flex items-center justify-between gap-2 px-3 py-3 rounded-lg border border-white/[0.07] bg-white/[0.025] text-slate-300 hover:text-[#e8ca72] hover:border-[#d4af37]/35 hover:bg-[#d4af37]/[0.06] transition-all duration-200"
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="text-[9px] text-[#a58b4b] font-mono">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+
+                    <span className="text-[11px] font-medium truncate">
+                      {isHindi ? link.labelHi : link.labelEn}
+                    </span>
+                  </span>
+
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-[#d4af37] shrink-0 transition-colors" />
+                </a>
+              ))}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="flex items-center justify-between mt-5 pt-4 border-t border-white/[0.07]">
+              <div className="flex items-center gap-2">
+                <Home className="w-3.5 h-3.5 text-[#a58b4b]" />
+                <span className="text-[10px] text-slate-500 tracking-wide">
+                  MOHIT YADAV
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeMobileMenu}
+                className="text-[10px] text-[#d4af37] hover:text-white transition-colors"
               >
-                <span>{mode === 'hi' ? link.labelHi : link.labelEn}</span>
-                <span className="text-[10px] text-amber-400">→</span>
-              </a>
-            ))}
+                {isHindi ? 'बंद करें' : 'Close Menu'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}

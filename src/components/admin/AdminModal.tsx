@@ -468,3 +468,5 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     </div>
   );
 };
+
+export default AdminModal;

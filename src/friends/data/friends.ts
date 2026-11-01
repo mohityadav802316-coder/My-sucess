@@ -64,6 +64,15 @@ export interface CategoryItem {
   isSpecialSquad?: boolean;
 }
 
+/* Optional SEO information for each friend */
+export interface FriendSEO {
+  title?: string;
+  description?: string;
+  keywords?: string[];
+  canonicalUrl?: string;
+  indexable?: boolean;
+}
+
 export interface Friend {
   id: string;
   name: string;
@@ -111,6 +120,7 @@ export interface Friend {
   isVerified?: boolean;
   instagram?: string | null;
   visibilitySettings?: FriendVisibilitySettings;
+  seo?: FriendSEO;
 }
 
 /**
@@ -262,3 +272,145 @@ export const DEFAULT_FRIENDS_SETTINGS: FriendsConfigSettings = {
     errorTitleEn: 'Failed to load friends from Firebase.',
   },
 };
+
+/* =========================================
+   CYBERMOHIT — SEO & E-E-A-T STRUCTURE
+   Three profile sections
+========================================= */
+
+export interface EEATSection {
+  key: 'identity' | 'expertise' | 'authority';
+  title: string;
+  description: string;
+  fields: string[];
+}
+
+export const SEO_EEAT_CATEGORIES: EEATSection[] = [
+  {
+    key: 'identity',
+    title: 'Identity & Profile',
+    description: 'Personal identity and authentic profile information.',
+    fields: ['name', 'nickname', 'bio', 'location']
+  },
+  {
+    key: 'expertise',
+    title: 'Expertise & Experience',
+    description: 'Skills, projects, hobbies and real experiences.',
+    fields: ['skills', 'projects', 'hobbies', 'dream']
+  },
+  {
+    key: 'authority',
+    title: 'Authority & Trust',
+    description: 'Public social profiles and verifiable identity links.',
+    fields: ['links', 'instagram', 'isVerified']
+  }
+];
+
+/* =========================================
+   INDEXING SAFETY
+========================================= */
+
+export function isFriendIndexable(
+  friend: Friend | null | undefined
+): boolean {
+  if (!friend || !isFriendPublic(friend)) return false;
+
+  // Do not index demo profiles.
+  if (friend.isDemo === true) return false;
+
+  // Do not index profiles without a meaningful identity.
+  if (!friend.name?.trim()) return false;
+
+  // Explicit admin/user SEO preference.
+  if (friend.seo?.indexable === false) return false;
+
+  return true;
+}
+
+/* =========================================
+   SEO META GENERATOR
+========================================= */
+
+export function buildFriendSEO(
+  friend: Friend,
+  siteUrl: string
+) {
+  const baseUrl = siteUrl.replace(/\/+$/, '');
+
+  const profileUrl =
+    `${baseUrl}/?friend=${encodeURIComponent(friend.id)}`;
+
+  const description = (
+    friend.seo?.description ||
+    friend.bio ||
+    `${friend.name} - Personal digital identity and profile on CyberMohit.`
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+
+  return {
+    title: (
+      friend.seo?.title ||
+      `${friend.name} | Digital Identity - CyberMohit`
+    ).slice(0, 70),
+
+    description,
+
+    keywords: [
+      ...(friend.seo?.keywords || []),
+      friend.name,
+      friend.nickname || '',
+      'CyberMohit'
+    ].filter(Boolean),
+
+    canonicalUrl: friend.seo?.canonicalUrl || profileUrl,
+
+    robots: isFriendIndexable(friend)
+      ? 'index, follow'
+      : 'noindex, nofollow'
+  };
+}
+
+/* =========================================
+   STRUCTURED DATA — JSON-LD
+========================================= */
+
+export function buildFriendStructuredData(
+  friend: Friend,
+  siteUrl: string
+) {
+  if (!isFriendIndexable(friend)) return null;
+
+  const baseUrl = siteUrl.replace(/\/+$/, '');
+  const seo = buildFriendSEO(friend, siteUrl);
+
+  const socialLinks = (friend.links || [])
+    .filter(link => link.visible !== false && link.url)
+    .map(link => link.url);
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: friend.fullName || friend.name,
+    alternateName: friend.nickname || undefined,
+    description: seo.description,
+    url: seo.canonicalUrl,
+    image: resolveImageUrl(friend.avatar) || undefined,
+    sameAs: socialLinks.length ? socialLinks : undefined,
+    knowsAbout: [
+      ...(Array.isArray(friend.skills) ? friend.skills : []),
+      ...(friend.hobbies ? [friend.hobbies] : []),
+      ...(friend.projects
+        ? Array.isArray(friend.projects)
+          ? friend.projects
+          : [friend.projects]
+        : [])
+    ].filter(Boolean),
+    memberOf: {
+      '@type': 'Organization',
+      name: 'CyberMohit',
+      url: baseUrl
+    }
+  };
+}

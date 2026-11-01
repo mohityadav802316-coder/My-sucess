@@ -35,17 +35,68 @@ import { Footer } from './components/sections/Footer';
 // Interactive Floating Widgets
 import { Floating3DFireFriendsButton } from './components/vfx/Floating3DFireFriendsButton';
 import { GlobalPortfolioErrorBoundary } from './components/vfx/GlobalPortfolioErrorBoundary';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 
-// Lazy-loaded Modals (loaded on-demand only when opened to reduce initial bundle)
-const FamilyVaultModal = React.lazy(() =>
-  import('./components/family/FamilyVaultModal').then((m) => ({ default: m.FamilyVaultModal }))
+// Lazy-loaded Modals with auto-retry on dynamic chunk load failures
+const FamilyVaultModal = lazyWithRetry(
+  () => import('./components/family/FamilyVaultModal'),
+  'FamilyVaultModal'
 );
-const AdminModal = React.lazy(() =>
-  import('./components/admin/AdminModal').then((m) => ({ default: m.AdminModal }))
+const AdminModal = lazyWithRetry(
+  () => import('./components/admin/AdminModal'),
+  'AdminModal'
 );
 
 // Lazy-loaded Friends Universe (loaded strictly on button tap to protect portfolio speed)
-const FriendsUniverse = React.lazy(() => import('./friends/FriendsUniverse'));
+const FriendsUniverse = lazyWithRetry(() => import('./friends/FriendsUniverse'));
+
+class AdminErrorBoundary extends React.Component<
+  { children: React.ReactNode; onClose: () => void },
+  { hasError: boolean; errorMsg: string }
+> {
+  constructor(props: { children: React.ReactNode; onClose: () => void }) {
+    super(props);
+    this.state = { hasError: false, errorMsg: '' };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, errorMsg: error?.message || String(error) };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('Admin Modal ErrorBoundary caught:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 z-50 bg-[#0A0D14]/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center text-slate-200 font-sans">
+          <div className="max-w-md p-6 rounded-2xl bg-slate-900 border border-amber-500/50 shadow-2xl space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xl">
+              🛡️
+            </div>
+            <h3 className="text-base font-bold text-white">Admin Panel लोड करने में समस्या आई</h3>
+            <p className="text-xs text-slate-400 leading-relaxed font-mono">
+              {this.state.errorMsg || 'नेटवर्क या मॉड्यूल लोड करते समय समस्या हुई।'}
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => this.setState({ hasError: false, errorMsg: '' })}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer transition-colors"
+              >
+                फिर कोशिश करें (Retry)
+              </button>
+              <button
+                onClick={this.props.onClose}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono cursor-pointer transition-colors"
+              >
+                बंद करें (Close)
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 class FriendsErrorBoundary extends React.Component<
   { children: React.ReactNode; onClose: () => void },
@@ -305,12 +356,23 @@ const MainPortfolio: React.FC = () => {
       )}
 
       {isAdminOpen && (
-        <React.Suspense fallback={null}>
-          <AdminModal
-            isOpen={isAdminOpen}
-            onClose={() => setIsAdminOpen(false)}
-          />
-        </React.Suspense>
+        <AdminErrorBoundary onClose={() => setIsAdminOpen(false)}>
+          <React.Suspense
+            fallback={
+              <div className="fixed inset-0 z-50 bg-[#0A0D14]/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none">
+                <div className="w-12 h-12 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-xs font-mono text-amber-400 tracking-wider uppercase">
+                  SECURITY PROTOCOL: ADMIN CONSOLE LOADING...
+                </p>
+              </div>
+            }
+          >
+            <AdminModal
+              isOpen={isAdminOpen}
+              onClose={() => setIsAdminOpen(false)}
+            />
+          </React.Suspense>
+        </AdminErrorBoundary>
       )}
 
       {/* 3D Fiery Floating Friends Button (Bottom Screen Magnet) */}

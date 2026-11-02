@@ -6,6 +6,8 @@ import React, {
   useMemo,
 } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { DivineLightSweep } from '../royal/DivineLightSweep';
 import {
   subscribeRoyalIdentity,
@@ -33,6 +35,14 @@ interface DivineHero3DProps {
   onExplorePortfolio?: () => void;
   onContactClick?: () => void;
 }
+
+// ── 360° rotation settings ─────────────────────────────────────
+// Put your own GLB at /public/models/product.glb and set the path below.
+// Leave it as null to keep the photo stage; dragging then scrubs through
+// your enabled pose images like a turntable.
+const HERO_MODEL_URL: string | null = null; // e.g. '/models/product.glb'
+const SCRUB_STEP_PX = 28; // pixels of drag per pose change
+const SCRUB_DIRECTION = 1; // set to -1 if the turn feels reversed
 
 const SERIF: React.CSSProperties = {
   fontFamily: '"Cormorant Garamond", Georgia, serif',
@@ -66,6 +76,7 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
   const [isSweeping, setIsSweeping] = useState(false);
   const [isUserPaused, setIsUserPaused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [hasModel, setHasModel] = useState(false);
 
   const pendingPoseIdxRef = useRef<number | null>(null);
   const isTransitioningRef = useRef(false);
@@ -93,6 +104,16 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
     targetX: 0,
     targetY: 0,
   });
+
+  const modelGroupRef = useRef<THREE.Group | null>(null);
+  const modelModeRef = useRef(false);
+  const modelYawRef = useRef(0.5);
+  const isDraggingRef = useRef(false);
+  const lastInteractRef = useRef(0);
+  const dragRef = useRef({ active: false, lastX: 0, vel: 0 });
+  const scrubRef = useRef<(steps: number) => void>(() => {});
+  const enabledCountRef = useRef(0);
+  const photoDragYawRef = useRef(0);
 
   const textureCache = useRef<Map<string, THREE.Texture>>(new Map());
   const photoAspectRef = useRef(0.72);
@@ -128,6 +149,14 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
     }
     return fallbackUrl;
   }, [enabledImages, safeActivePoseIdx, fallbackUrl]);
+
+  enabledCountRef.current = enabledImages.length;
+
+  scrubRef.current = (steps: number) => {
+    const total = enabledImages.length;
+    if (total <= 1 || modelModeRef.current) return;
+    setActivePoseIdx((current) => (((current + steps) % total) + total) % total);
+  };
 
   useEffect(() => {
     externalPausedRef.current = externalPaused;
@@ -274,7 +303,7 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
 
         photoMaterialRef.current.map = texture;
         photoMaterialRef.current.needsUpdate = true;
-        photoMeshRef.current.visible = true;
+        photoMeshRef.current.visible = !modelModeRef.current;
 
         updatePhotoGeometry();
       };
@@ -390,7 +419,11 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
     }
 
     const interval = setInterval(() => {
-      if (!isTransitioningRef.current) {
+      if (
+        !isTransitioningRef.current &&
+        !modelModeRef.current &&
+        !isDraggingRef.current
+      ) {
         nextPose();
       }
     }, 2700);
@@ -758,6 +791,115 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
     resizeObserver.observe(mount);
 
     // ── Independent animation loop; never reads page scroll ─────
+    // ── Drag to rotate (model) or scrub poses (photos) ──────────
+    let disposed = false;
+    let scrubAccumulator = 0;
+    const stageEl = stageContainerRef.current ?? mount;
+    // Vertical swipes still scroll the page; horizontal drags rotate.
+    stageEl.style.touchAction = 'pan-y';
+
+    const handlePointerDown = (event: PointerEvent) => {
+      dragRef.current.active = true;
+      dragRef.current.lastX = event.clientX;
+      dragRef.current.vel = 0;
+      isDraggingRef.current = true;
+      scrubAccumulator = 0;
+      lastInteractRef.current = performance.now();
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag.active) return;
+
+      const dx = event.clientX - drag.lastX;
+      drag.lastX = event.clientX;
+      lastInteractRef.current = performance.now();
+
+      if (modelModeRef.current) {
+        modelYawRef.current += dx * 0.012;
+        drag.vel = dx * 0.012;
+        return;
+      }
+
+      // Only one photo available: turn the flat photo like a card (springs back).
+      if (enabledCountRef.current <= 1) {
+        photoDragYawRef.current = Math.max(
+          -1.15,
+          Math.min(1.15, photoDragYawRef.current + dx * 0.012)
+        );
+        return;
+      }
+
+      scrubAccumulator += dx;
+      while (Math.abs(scrubAccumulator) >= SCRUB_STEP_PX) {
+        const direction = scrubAccumulator > 0 ? 1 : -1;
+        scrubRef.current(direction * SCRUB_DIRECTION);
+        scrubAccumulator -= direction * SCRUB_STEP_PX;
+      }
+    };
+
+    const handlePointerEnd = () => {
+      dragRef.current.active = false;
+      isDraggingRef.current = false;
+      scrubAccumulator = 0;
+      lastInteractRef.current = performance.now();
+    };
+
+    stageEl.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    // ── Optional real 3D model (GLB) ────────────────────────────
+    if (HERO_MODEL_URL) {
+      new GLTFLoader().load(
+        HERO_MODEL_URL,
+        (gltf) => {
+          if (disposed) return;
+
+          const object = gltf.scene;
+          const box = new THREE.Box3().setFromObject(object);
+          const size = box.getSize(new THREE.Vector3());
+          const scale = Math.min(
+            3.7 / Math.max(size.y, 1e-4),
+            2.8 / Math.max(size.x, size.z, 1e-4)
+          );
+
+          object.scale.multiplyScalar(scale);
+          object.updateMatrixWorld(true);
+
+          const fitted = new THREE.Box3().setFromObject(object);
+          const center = fitted.getCenter(new THREE.Vector3());
+          object.position.x -= center.x;
+          object.position.z -= center.z;
+          object.position.y += -1.9 - fitted.min.y;
+
+          const group = new THREE.Group();
+          group.add(object);
+          scene.add(group);
+
+          // Soft studio reflections so gold and metal parts do not look black.
+          const pmrem = new THREE.PMREMGenerator(renderer);
+          scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+          pmrem.dispose();
+          (scene as unknown as { environmentIntensity?: number }).environmentIntensity = 0.7;
+
+          modelGroupRef.current = group;
+          modelModeRef.current = true;
+
+          if (photoMeshRef.current) {
+            photoMeshRef.current.visible = false;
+          }
+
+          setHasModel(true);
+        },
+        undefined,
+        (error) => {
+          console.warn('[DivineHero3D] Model load warning:', HERO_MODEL_URL, error);
+        }
+      );
+    }
+
     let animationFrameId = 0;
     const clock = new THREE.Clock();
 
@@ -782,11 +924,38 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
         photoMeshRef.current.position.y =
           0.02 + Math.sin(elapsed * 1.25) * 0.025;
 
+        if (!dragRef.current.active) {
+          photoDragYawRef.current *= 0.9;
+        }
+
         photoMeshRef.current.rotation.y =
           mouseRef.current.x * 0.075 +
-          Math.sin(elapsed * 0.45) * 0.008;
+          Math.sin(elapsed * 0.45) * 0.008 +
+          photoDragYawRef.current;
 
         photoMeshRef.current.rotation.x = -mouseRef.current.y * 0.035;
+      }
+
+      if (modelGroupRef.current && modelModeRef.current) {
+        const drag = dragRef.current;
+
+        if (!drag.active) {
+          modelYawRef.current += drag.vel;
+          drag.vel *= 0.93;
+
+          if (Math.abs(drag.vel) < 0.0002) {
+            drag.vel = 0;
+          }
+
+          if (
+            drag.vel === 0 &&
+            performance.now() - lastInteractRef.current > 2200
+          ) {
+            modelYawRef.current += delta * 0.4;
+          }
+        }
+
+        modelGroupRef.current.rotation.y = modelYawRef.current;
       }
 
       if (haloGroupRef.current) {
@@ -836,6 +1005,11 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('mousemove', handleStageMouseMove);
+      disposed = true;
+      stageEl.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
       resizeObserver.disconnect();
 
       if (transitionUnlockTimerRef.current) {
@@ -876,6 +1050,8 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
       pedestalGroupRef.current = null;
       stageParticlesRef.current = null;
       haloGroupRef.current = null;
+      modelGroupRef.current = null;
+      modelModeRef.current = false;
     };
     // Deliberately initialize the WebGL scene once.
     // Image changes are handled by the separate texture effect above.
@@ -1146,7 +1322,11 @@ export const DivineHero3D: React.FC<DivineHero3DProps> = ({
                 </span>
 
                 <span className="rounded-md border border-[#D4AF5F]/20 bg-[#08090B]/75 px-2.5 py-1 text-[#D4AF5F] backdrop-blur-md">
-                  2s DISPLAY · 0.7s SWEEP
+                  {hasModel
+                    ? 'DRAG · 360° ROTATE'
+                    : enabledImages.length > 1
+                    ? 'DRAG · SCRUB POSES'
+                    : 'DRAG · TURN PHOTO'}
                 </span>
               </div>
             </div>

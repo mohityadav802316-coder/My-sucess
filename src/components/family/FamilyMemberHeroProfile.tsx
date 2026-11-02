@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 import { sound } from '../audio/SoundEffects';
-import { FamilyMember, PortfolioImage } from '../../types';
-import { FloatingPhoneHero3D } from '../three/FloatingPhoneHero3D';
+import { FamilyMember } from '../../types';
 import { MysticTextReveal } from '../vfx/MysticTextReveal';
 import { FamilyPhotoGalleryModal } from './FamilyPhotoGalleryModal';
 import {
@@ -37,21 +36,6 @@ export const FamilyMemberHeroProfile: React.FC<FamilyMemberHeroProfileProps> = (
         (mode === 'hi'
           ? 'परिवार के अनमोल स्तम्भ और जीवन की प्रेरणा।'
           : 'Cherished family pillar and lifelong inspiration.');
-
-  const memberCentralImage: PortfolioImage = {
-    id: `family_${member.id}`,
-    downloadUrl: member.photoUrl || '',
-    caption: member.name,
-    captionHi: member.nameHi || member.name,
-    section: 'profile',
-    category: 'personal',
-    displayOrder: 0,
-    isPublished: true,
-    isMainProfile: true,
-    isHeroOrbit: false,
-    storagePath: member.storagePath || 'family',
-    createdAt: null,
-  };
 
   const allPhotos = [member.photoUrl, ...(member.photos || [])].filter(Boolean);
 
@@ -159,33 +143,83 @@ export const FamilyMemberHeroProfile: React.FC<FamilyMemberHeroProfileProps> = (
           </div>
         </motion.div>
 
-        {/* Right: Exact 3D Floating Phone */}
+        {/* Right: Luxury Portrait Dossier Frame */}
         <motion.div
           initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.0, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="lg:col-span-6 relative flex flex-col items-center order-1 lg:order-2 w-full"
         >
-          <FloatingPhoneHero3D
-            centralImage={memberCentralImage}
-            customName={member.name}
-            customSubtitle={memberRelation}
-            customHeaderTag="FAMILY VAULT"
-            customHeaderSub={`${memberRelation.toUpperCase()} // DOSSIER`}
-            customNote="Precious Family Circle"
-            metric1={{
-              label: 'FAMILY',
-              sub: 'CIRCLE',
-            }}
-            metric2={{
-              label: memberRelation.toUpperCase().slice(0, 8),
-              sub: 'BOND',
-            }}
-            metric3={{
-              label: 'LOCKED',
-              sub: 'VAULT',
-            }}
-          />
+          <div className="relative w-full max-w-md mx-auto">
+            {/* Ambient Back Glow */}
+            <div className="absolute -inset-4 bg-gradient-to-tr from-amber-500/20 via-yellow-500/10 to-transparent rounded-3xl blur-2xl opacity-60 pointer-events-none" />
+
+            <div className="relative rounded-3xl border border-amber-500/30 bg-[#0C0B09]/90 backdrop-blur-xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
+              {/* Header Badge */}
+              <div className="flex items-center justify-between pb-4 border-b border-amber-500/15">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                  <span className="text-[10px] tracking-[0.25em] font-bold text-amber-300 uppercase">FAMILY VAULT</span>
+                </div>
+                <span className="text-[9px] tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
+                  {memberRelation.toUpperCase()} // DOSSIER
+                </span>
+              </div>
+
+              {/* Portrait Display Frame */}
+              <div className="relative my-5 rounded-2xl overflow-hidden aspect-[4/5] bg-black/60 border border-amber-500/20 flex items-center justify-center group">
+                {member.photoUrl ? (
+                  <img
+                    src={member.photoUrl}
+                    alt={member.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 text-center">
+                    <UserCheck className="w-16 h-16 text-amber-400/40 mb-3" />
+                    <span className="text-sm text-neutral-400 font-serif">{member.name}</span>
+                  </div>
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
+
+                <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-serif text-lg font-bold drop-shadow-md">{memberName}</p>
+                    <p className="text-amber-300/90 text-xs font-mono tracking-wide">{memberRelation}</p>
+                  </div>
+                  {allPhotos.length > 0 && (
+                    <button
+                      onClick={() => {
+                        sound.playClick();
+                        setIsGalleryOpen(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs flex items-center gap-1.5 backdrop-blur-md transition-all shadow-lg cursor-pointer"
+                    >
+                      <Images className="w-3.5 h-3.5" />
+                      <span>{allPhotos.length}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Metrics Strip */}
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-amber-500/15 text-center">
+                <div className="p-2 rounded-xl bg-white/[0.02] border border-amber-500/10">
+                  <span className="block text-[9px] text-neutral-400 font-mono">FAMILY</span>
+                  <span className="text-xs font-bold text-amber-300">CIRCLE</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/[0.02] border border-amber-500/10">
+                  <span className="block text-[9px] text-neutral-400 font-mono">{memberRelation.toUpperCase().slice(0, 8)}</span>
+                  <span className="text-xs font-bold text-amber-300">BOND</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/[0.02] border border-amber-500/10">
+                  <span className="block text-[9px] text-neutral-400 font-mono">STATUS</span>
+                  <span className="text-xs font-bold text-amber-300">ARCHIVED</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </motion.div>
       </div>
 

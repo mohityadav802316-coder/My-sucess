@@ -5,7 +5,6 @@ import { useLanguage } from '../../context/LanguageContext';
 import { sound } from '../audio/SoundEffects';
 import { UNIVERSAL_TECH_REGISTRY, UNIVERSAL_TECH_CATEGORIES } from '../../data/universalTechRegistry';
 import { PremiumBrandLogo } from '../vfx/PremiumBrandLogo';
-import { Lens3DViewer } from '../three/Lens3DViewer';
 
 /* Fonts (index.html में एक बार):
    https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@400;500;600&display=swap */
@@ -213,8 +212,19 @@ export const UniversalTechConsole: React.FC = () => {
               </div>
 
               <div className="relative my-4 flex h-64 w-64 items-center justify-center sm:h-72 sm:w-72">
-                <div className="absolute inset-0 z-0">
-                  <Lens3DViewer brandColor={selected.svgBrandColor} accentGlow={selected.accentGlow} isInteractive />
+                <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+                  <div
+                    className="absolute h-48 w-48 rounded-full opacity-35 blur-2xl transition-all duration-700"
+                    style={{ background: selected.accentGlow || 'rgba(212,175,95,0.4)' }}
+                  />
+                  <div
+                    className="absolute h-44 w-44 rounded-full border border-dashed opacity-40 animate-[spin_24s_linear_infinite]"
+                    style={{ borderColor: selected.svgBrandColor || 'var(--gold)' }}
+                  />
+                  <div
+                    className="absolute h-56 w-56 rounded-full border opacity-20"
+                    style={{ borderColor: selected.svgBrandColor || 'var(--gold)' }}
+                  />
                 </div>
                 <motion.div
                   key={selected.id}
